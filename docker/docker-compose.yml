@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: notionlock-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-notionlock}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-notionlock}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - notionlock-internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: notionlock-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - notionlock-internal
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: notionlock-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-notionlock}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-notionlock}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: https://${DOMAIN}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - notionlock-internal
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notionlock-api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.notionlock-api.entrypoints=https"
+      - "traefik.http.routers.notionlock-api.tls=true"
+      - "traefik.http.routers.notionlock-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.notionlock-api.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik-public"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL}
+        REACT_APP_SITE_URL: ${REACT_APP_SITE_URL}
+    container_name: notionlock-frontend
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notionlock.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.notionlock.entrypoints=https"
+      - "traefik.http.routers.notionlock.tls=true"
+      - "traefik.http.routers.notionlock.tls.certresolver=letsencrypt"
+      - "traefik.http.services.notionlock.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik-public"
+
+networks:
+  traefik-public:
+    external: true
+  notionlock-internal:
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:

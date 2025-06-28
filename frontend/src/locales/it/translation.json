@@ -1,0 +1,57 @@
+{
+  "faq": "FAQ",
+  "about": "Chi Siamo",
+  "dashboard": "Dashboard",
+  "logout": "Esci",
+  "login": "Accedi",
+  "homepage": {
+    "hero": {
+      "title_part1": "Proteggi le tue pagine Notion",
+      "title_part2": "con una semplice password",
+      "description": "L'unico servizio 100% gratuito che fa una cosa sola: proteggere le tue pagine Notion. Nessun abbonamento, nessuna funzione inutile.",
+      "button": "Inizia Gratuitamente →"
+    },
+    "features": {
+      "setup_title": "Setup in 3 Click",
+      "setup_description": "Incolla il link, scegli password, condividi. Nessuna configurazione complessa.",
+      "free_title": "100% Gratuito",
+      "free_description": "Nessun piano premium, nessun limite. Supportato da pubblicità discrete.",
+      "privacy_title": "Privacy First",
+      "privacy_description": "Nessun tracking invasivo. I tuoi dati sono al sicuro e protetti."
+    },
+    "how_it_works": {
+      "title": "Come Funziona",
+      "step1_title": "Incolla il link Notion pubblico",
+      "step1_description": "Assicurati che la tua pagina Notion sia già condivisa pubblicamente. Copia il link e incollalo nel nostro sistema.",
+      "step2_title": "Imposta una password sicura",
+      "step2_description": "Scegli una password che verrà richiesta a chiunque tenti di accedere alla tua pagina.",
+      "step3_title": "Condividi il link protetto",
+      "step3_description": "Ricevi un link tipo notionlock.com/p/abc123. Solo chi ha la password potrà vedere la tua pagina Notion."
+    },
+    "cta": {
+      "title": "Pronto a proteggere le tue pagine?",
+      "description": "Unisciti a migliaia di utenti che proteggono i loro contenuti gratuitamente",
+      "button": "Inizia Ora - È Gratis!"
+    },
+    "testimonials": {
+      "title": "Cosa dicono i nostri utenti",
+      "testimonial1_text": "NotionLock è incredibilmente semplice e fa esattamente quello che promette. Finalmente posso condividere le mie note in modo sicuro!",
+      "testimonial1_author": "- Alex, Freelancer",
+      "testimonial2_text": "Un servizio fantastico e gratuito. Lo uso per condividere documenti di progetto con i clienti. Consigliatissimo!",
+      "testimonial2_author": "- Sara, Project Manager",
+      "testimonial3_text": "La privacy è fondamentale per me, e NotionLock mi dà la tranquillità di cui ho bisogno. E non costa nulla!",
+      "testimonial3_author": "- Marco, Studente"
+    },
+    "faq": {
+      "title": "Domande Frequenti",
+      "question1_title": "NotionLock è davvero gratuito?",
+      "question1_answer": "Sì, il servizio è completamente gratuito e si sostiene tramite banner pubblicitari non invasivi. Non ci sono costi nascosti o piani premium.",
+      "question2_title": "I miei dati sono al sicuro?",
+      "question2_answer": "Assolutamente. La tua privacy è la nostra priorità. Non memorizziamo il contenuto delle tue pagine Notion e utilizziamo la crittografia per proteggere le password.",
+      "question3_title": "Posso usare la mia pagina Notion normalmente?",
+      "question3_answer": "Certo. NotionLock non modifica in alcun modo la tua pagina originale. Crea semplicemente un link protetto da password che punta ad essa."
+    },
+    "seo_title": "NotionLock - Proteggi le tue pagine Notion con password",
+    "seo_description": "L'unico servizio gratuito per proteggere con password le tue pagine Notion. Facile da usare, sicuro e 100% gratuito. Inizia ora!"
+  }
+}

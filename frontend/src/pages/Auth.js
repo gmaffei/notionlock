@@ -10,6 +10,7 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState('');
   
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -17,14 +18,24 @@ const Auth = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setRegistrationSuccess('');
     setLoading(true);
 
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const { data } = await api.post(endpoint, { email, password });
       
-      login(data.token);
-      navigate('/dashboard');
+      if (isLogin) {
+        // Login: vai direttamente alla dashboard
+        login(data.token);
+        navigate('/dashboard');
+      } else {
+        // Registrazione: mostra messaggio di conferma senza fare login automatico
+        setRegistrationSuccess(data.message || 'Registrazione completata! Controlla la tua email per verificare l\'account.');
+        setEmail('');
+        setPassword('');
+        // Non fare login automatico per forzare l'utente a verificare l'email
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Si è verificato un errore');
     } finally {
@@ -40,7 +51,7 @@ const Auth = () => {
             <img src="/NotionLock_Logo.png" alt="NotionLock Logo" className="h-12 w-auto" />
             <h1 className="text-3xl font-bold text-blue-600">NotionLock</h1>
           </Link>
-          <p className="text-gray-600 mt-2">Proteggi le tue pagine Notion gratuitamente e facilmente - v2.2</p>
+          <p className="text-gray-600 mt-2">Proteggi le tue pagine Notion gratuitamente e facilmente - v2.3</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-8">
@@ -51,6 +62,27 @@ const Auth = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
               {error}
+            </div>
+          )}
+
+          {registrationSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+              <div className="flex items-center mb-2">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {registrationSuccess}
+              </div>
+              <button 
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setRegistrationSuccess('');
+                }}
+                className="text-blue-600 hover:text-blue-800 font-medium text-sm underline"
+              >
+                Vai al login per accedere
+              </button>
             </div>
           )}
 
@@ -139,6 +171,7 @@ const Auth = () => {
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError('');
+                  setRegistrationSuccess('');
                 }}
                 className="text-blue-600 hover:underline font-medium"
               >

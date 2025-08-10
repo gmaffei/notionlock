@@ -39,7 +39,7 @@ app.use(morgan('combined'));
 // Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs (increased for development)
   message: 'Troppi tentativi, riprova tra 15 minuti'
 });
 
@@ -57,7 +57,9 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth/login', authLimiter, authRoutes); // Rate limit only login
+app.use('/api/auth/register', authLimiter, authRoutes); // Rate limit only register
+app.use('/api/auth', authRoutes); // All other auth routes without rate limit
 app.use('/api/pages', pagesRoutes);
 app.use('/api/verify', passwordLimiter, publicRoutes);
 app.use('/api/p', publicRoutes);

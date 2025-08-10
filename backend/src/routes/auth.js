@@ -8,12 +8,12 @@ const crypto = require('crypto');
 
 // Validation middleware
 const validateRegister = [
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
   body('password').isLength({ min: 6 }).withMessage('Password deve essere almeno 6 caratteri')
 ];
 
 const validateLogin = [
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
   body('password').notEmpty()
 ];
 

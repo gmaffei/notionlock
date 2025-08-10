@@ -17,9 +17,14 @@ i18n
         translation: itTranslation,
       },
     },
-    fallbackLng: 'en', // Lingua di fallback
+    fallbackLng: 'it', // Lingua di fallback
+    lng: localStorage.getItem('language') || 'it', // Leggi dalla localStorage
     interpolation: {
       escapeValue: false, // React già previene gli XSS
+    },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage']
     },
   });
 

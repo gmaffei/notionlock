@@ -54,9 +54,8 @@ jobs:
           cp .env_prod .env
           echo "✅ Production environment configured"
           
-          # Backup database (optional safety net)
-          echo "💾 Creating database backup..."
-          docker compose -f docker/docker-compose.yml exec postgres pg_dump -U ${DB_USER:-notionlock} ${DB_NAME:-notionlock} > backup_$(date +%Y%m%d_%H%M%S).sql || echo "⚠️ Backup failed, but continuing deployment"
+          # Skip database backup in automated deployment to avoid hanging
+          echo "⏭️ Skipping database backup in automated deployment..."
           
           # Nuclear option: FRONTEND AND BACKEND rebuild (preserve database!)
           echo "☢️ APPLICATION REBUILD: Removing frontend and backend traces (DB preserved)..."

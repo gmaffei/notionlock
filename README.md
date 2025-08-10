@@ -4,7 +4,7 @@ Questa guida fornisce istruzioni dettagliate per il deployment completo di Notio
 
 ## Panoramica del Progetto
 
-**NotionLock** è un'applicazione web full-stack che permette di proteggere con password le pagine di Notion, aggiungendo un livello di sicurezza ai contenuti condivisi.
+**NotionLock** ï¿½ un'applicazione web full-stack che permette di proteggere con password le pagine di Notion, aggiungendo un livello di sicurezza ai contenuti condivisi.
 
 ### Architettura
 - **Frontend**: React (porta 80 in produzione)
@@ -243,7 +243,7 @@ curl -X POST https://api.notionlock.com/api/auth/register \
 ### Test Frontend
 1. Apri browser: `https://notionlock.com`
 2. Prova registrazione utente
-3. Verifica funzionalità
+3. Verifica funzionalitï¿½
 
 ---
 
@@ -378,9 +378,59 @@ Configura backup automatici di database e file di configurazione.
 
 ---
 
-**Deployment completato!** <‰
+**Deployment completato!** <ï¿½
 
-L'applicazione sarà accessibile su:
+L'applicazione sarï¿½ accessibile su:
 - Frontend: `https://notionlock.com`
 - API: `https://api.notionlock.com`
 - Dashboard Traefik: `https://traefik.notionlock.com`
+
+
+
+Ecco i comandi Docker per gestire il database su VPS:
+
+  Connettersi al database:
+
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock
+
+  Verificare utenti e email:
+
+  # Vedere tutti gli utenti
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT id, email, 
+  email_verified, created_at FROM users ORDER BY created_at DESC;"
+
+  # Contare utenti verificati vs non verificati
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT SUM(CASE WHEN 
+  email_verified = TRUE THEN 1 ELSE 0 END) as verificati, SUM(CASE WHEN email_verified = FALSE THEN 1 ELSE 0 END) as 
+  non_verificati FROM users;"
+
+  # Vedere utenti non verificati
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT email, 
+  verification_expires, created_at FROM users WHERE email_verified = FALSE;"
+
+  Cancellare utenti:
+
+  # Cancellare utente specifico
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "DELETE FROM users WHERE 
+  email = 'email@example.com';"
+
+  # Cancellare utenti non verificati scaduti
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "DELETE FROM users WHERE 
+  email_verified = FALSE AND verification_expires < NOW();"
+
+  Verificare email manualmente:
+
+  # Verificare una email specifica
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "UPDATE users SET 
+  email_verified = TRUE, verification_token = NULL, verification_expires = NULL WHERE email = 'email@example.com';"
+
+  Statistiche utili:
+
+  # Contare totale utenti
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT COUNT(*) as 
+  total_users FROM users;"
+
+  # Contare pagine protette
+  docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT COUNT(*) as 
+  total_pages FROM protected_pages;"
+  

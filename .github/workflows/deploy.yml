@@ -58,14 +58,14 @@ jobs:
           echo "💾 Creating database backup..."
           docker compose -f docker/docker-compose.yml exec postgres pg_dump -U ${DB_USER:-notionlock} ${DB_NAME:-notionlock} > backup_$(date +%Y%m%d_%H%M%S).sql || echo "⚠️ Backup failed, but continuing deployment"
           
-          # Nuclear option: FRONTEND ONLY rebuild (preserve database!)
-          echo "☢️ FRONTEND REBUILD: Removing frontend traces (DB preserved)..."
-          docker compose -f docker/docker-compose.yml stop frontend || true
-          docker compose -f docker/docker-compose.yml rm -f frontend || true
+          # Nuclear option: FRONTEND AND BACKEND rebuild (preserve database!)
+          echo "☢️ APPLICATION REBUILD: Removing frontend and backend traces (DB preserved)..."
+          docker compose -f docker/docker-compose.yml stop frontend backend || true
+          docker compose -f docker/docker-compose.yml rm -f frontend backend || true
           
-          # Remove ONLY frontend images (be very specific)
-          echo "🗑️ Removing frontend images only..."
-          docker images | grep "notionlock.*frontend\|notionlock-frontend" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
+          # Remove frontend and backend images (be very specific)
+          echo "🗑️ Removing frontend and backend images only..."
+          docker images | grep "notionlock.*frontend\|notionlock-frontend\|notionlock.*backend\|notionlock-backend" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
           
           # Verify database is still running
           echo "🔍 Checking database status..."
@@ -84,9 +84,9 @@ jobs:
           echo "📥 Pulling base images..."
           docker compose -f docker/docker-compose.yml pull postgres redis || true
           
-          # Build frontend completely fresh
-          echo "🔨 Building frontend from absolute scratch..."
-          DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend
+          # Build all services completely fresh
+          echo "🔨 Building frontend and backend from absolute scratch..."
+          DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend backend
           
           # Start all containers (database will use existing data)
           echo "🚀 Starting all containers..."

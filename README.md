@@ -433,4 +433,39 @@ Ecco i comandi Docker per gestire il database su VPS:
   # Contare pagine protette
   docker compose -f docker/docker-compose.yml exec postgres psql -U notionlock -d notionlock -c "SELECT COUNT(*) as 
   total_pages FROM protected_pages;"
+
+
+  Log in tempo reale:
+
+  # SSH nella VPS e poi:
+  cd /opt/notionlock
+  docker compose -f docker/docker-compose.yml logs -f frontend
+
+  Log delle ultime righe:
+
+  # Ultime 100 righe
+  docker compose -f docker/docker-compose.yml logs --tail=100 frontend
+
+  # Ultime 50 righe con timestamp
+  docker compose -f docker/docker-compose.yml logs -t --tail=50 frontend
+
+  Log di tutti i container:
+
+  # Tutti i container insieme
+  docker compose -f docker/docker-compose.yml logs -f
+
+  # Solo backend e frontend
+  docker compose -f docker/docker-compose.yml logs -f backend frontend
+
+  Log del deploy (GitHub Actions):
+
+  Vai su GitHub → Actions → clicca sull'ultimo workflow run per vedere i log completi del deploy.
+
+  Verificare se il frontend è aggiornato:
+
+  # Vedere quando è stato creato il container frontend
+  docker inspect notionlock-frontend | grep Created
+
+  # Verificare il contenuto del file nell'nginx
+  docker compose -f docker/docker-compose.yml exec frontend cat /usr/share/nginx/html/index.html | grep "v2.0"
   

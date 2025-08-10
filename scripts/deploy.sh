@@ -44,9 +44,9 @@ docker system prune -f || true
 echo "📝 Latest commits:"
 git log --oneline -3
 
-# Build frontend completely fresh
-echo "🔨 Building frontend from absolute scratch..."
-DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend
+# Build frontend and backend completely fresh
+echo "🔨 Building frontend and backend from absolute scratch..."
+DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend backend
 
 echo "🚀 Starting all containers..."
 docker compose -f docker/docker-compose.yml --env-file .env up -d

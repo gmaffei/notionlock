@@ -54,14 +54,26 @@ jobs:
           cp .env_prod .env
           echo "✅ Production environment configured"
           
-          # Nuclear option: complete frontend rebuild
-          echo "☢️ NUCLEAR REBUILD: Removing ALL frontend traces..."
+          # Backup database (optional safety net)
+          echo "💾 Creating database backup..."
+          docker compose -f docker/docker-compose.yml exec postgres pg_dump -U ${DB_USER:-notionlock} ${DB_NAME:-notionlock} > backup_$(date +%Y%m%d_%H%M%S).sql || echo "⚠️ Backup failed, but continuing deployment"
+          
+          # Nuclear option: FRONTEND ONLY rebuild (preserve database!)
+          echo "☢️ FRONTEND REBUILD: Removing frontend traces (DB preserved)..."
           docker compose -f docker/docker-compose.yml stop frontend || true
           docker compose -f docker/docker-compose.yml rm -f frontend || true
           
-          # Remove ALL related images
-          echo "🗑️ Removing all notionlock images..."
-          docker images | grep notionlock | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
+          # Remove ONLY frontend images (be very specific)
+          echo "🗑️ Removing frontend images only..."
+          docker images | grep "notionlock.*frontend\|notionlock-frontend" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
+          
+          # Verify database is still running
+          echo "🔍 Checking database status..."
+          if docker compose -f docker/docker-compose.yml ps postgres | grep -q "Up"; then
+            echo "✅ Database container is running - data preserved!"
+          else
+            echo "⚠️ Database container not running - will restart with existing data"
+          fi
           
           # Clean ALL docker cache
           echo "🧹 Nuclear cleaning of Docker cache..."
@@ -76,9 +88,18 @@ jobs:
           echo "🔨 Building frontend from absolute scratch..."
           DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend
           
-          # Start all containers
+          # Start all containers (database will use existing data)
           echo "🚀 Starting all containers..."
           docker compose -f docker/docker-compose.yml --env-file .env up -d
+          
+          # Verify database data integrity
+          echo "🔍 Checking database data..."
+          sleep 10
+          USER_COUNT=$(docker compose -f docker/docker-compose.yml exec postgres psql -U ${DB_USER:-notionlock} -d ${DB_NAME:-notionlock} -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "0")
+          echo "📊 Users in database: ${USER_COUNT}"
+          
+          PAGE_COUNT=$(docker compose -f docker/docker-compose.yml exec postgres psql -U ${DB_USER:-notionlock} -d ${DB_NAME:-notionlock} -t -c "SELECT COUNT(*) FROM protected_pages;" 2>/dev/null || echo "0")
+          echo "📊 Protected pages: ${PAGE_COUNT}"
           
           # Wait for containers
           echo "⏳ Waiting for containers to initialize..."

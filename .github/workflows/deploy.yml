@@ -30,17 +30,29 @@ jobs:
           set -e
           cd /opt/notionlock
           
-          # Pull latest changes
+          # Show current git status
+          echo "📋 Current git status:"
+          git status --porcelain || true
+          
+          # Force pull latest changes (discard local changes)
           echo "📥 Pulling latest changes from GitHub..."
-          git pull origin master
+          git stash push -m "Auto-stash before deployment $(date)" || true
+          git fetch origin master
+          git reset --hard origin/master
+          git clean -fd
+          echo "✅ Repository updated to latest master"
           
           # Show latest commits
           echo "📝 Latest commits:"
           git log --oneline -3
           
-          # Copy production environment
+          # Copy production environment (backup existing if present)
           echo "🔧 Setting up production environment..."
+          if [ -f .env ]; then
+            cp .env .env.backup.$(date +%Y%m%d_%H%M%S) || true
+          fi
           cp .env_prod .env
+          echo "✅ Production environment configured"
           
           # Nuclear option: complete frontend rebuild
           echo "☢️ NUCLEAR REBUILD: Removing ALL frontend traces..."

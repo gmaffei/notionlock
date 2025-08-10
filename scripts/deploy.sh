@@ -26,19 +26,27 @@ docker compose -f docker/docker-compose.yml down --timeout 30 || true
 echo "📥 Pulling base images..."
 docker compose -f docker/docker-compose.yml pull postgres redis || true
 
-# Force rebuild frontend (clear cache)
-echo "🗑️  Stopping and removing frontend..."
+# Nuclear option: complete frontend rebuild
+echo "☢️  NUCLEAR REBUILD: Removing ALL frontend traces..."
 docker compose -f docker/docker-compose.yml stop frontend || true
 docker compose -f docker/docker-compose.yml rm -f frontend || true
 
-# Remove frontend image and build cache
-echo "🗑️  Clearing frontend image and build cache..."
-docker rmi notionlock-frontend 2>/dev/null || true
-docker builder prune -f || true
+# Remove ALL related images
+echo "🗑️  Removing all notionlock images..."
+docker images | grep notionlock | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
 
-# Build and deploy with no cache
-echo "🔨 Building frontend from scratch..."
-docker compose -f docker/docker-compose.yml --env-file .env build --no-cache frontend
+# Clean ALL docker cache
+echo "🧹 Nuclear cleaning of Docker cache..."
+docker builder prune -af || true
+docker system prune -f || true
+
+# Verify frontend code is latest
+echo "📝 Latest commits:"
+git log --oneline -3
+
+# Build frontend completely fresh
+echo "🔨 Building frontend from absolute scratch..."
+DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend
 
 echo "🚀 Starting all containers..."
 docker compose -f docker/docker-compose.yml --env-file .env up -d
@@ -55,6 +63,14 @@ docker compose -f docker/docker-compose.yml ps
 echo "🔍 Checking frontend build..."
 if docker compose -f docker/docker-compose.yml exec frontend ls /usr/share/nginx/html/static/js/ >/dev/null 2>&1; then
     echo "✅ Frontend static files found"
+    
+    # Check if our debug message is in the built JS
+    echo "🔍 Checking if new code is in build..."
+    if docker compose -f docker/docker-compose.yml exec frontend grep -r "Header rendered, current language" /usr/share/nginx/html/static/js/ >/dev/null 2>&1; then
+        echo "✅ New debug code found in build!"
+    else
+        echo "❌ Debug code NOT found - build might be using old cache"
+    fi
 else
     echo "❌ Frontend build might have failed - no static files found"
 fi

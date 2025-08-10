@@ -32,19 +32,34 @@ const Header = () => {
     localStorage.setItem('language', lng);
   };
 
-  // Flag icons as emoji
+  // Simple flag components with fallback
+  const ItalyFlag = () => (
+    <div className="inline-flex w-5 h-4 border border-gray-300 rounded-sm overflow-hidden">
+      <div className="w-1/3 h-full bg-green-600"></div>
+      <div className="w-1/3 h-full bg-white"></div>
+      <div className="w-1/3 h-full bg-red-600"></div>
+    </div>
+  );
+
+  const UKFlag = () => (
+    <div className="inline-flex w-5 h-4 bg-blue-700 border border-gray-300 rounded-sm overflow-hidden relative">
+      {/* White cross */}
+      <div className="absolute top-0 left-0 w-full h-0.5 bg-white transform translate-y-1.5"></div>
+      <div className="absolute top-0 left-0 w-0.5 h-full bg-white transform translate-x-2"></div>
+      {/* Red cross (smaller) */}
+      <div className="absolute top-0 left-0 w-full h-px bg-red-500 transform translate-y-1.5"></div>
+      <div className="absolute top-0 left-0 w-px h-full bg-red-500 transform translate-x-2"></div>
+    </div>
+  );
+
   const getCurrentFlag = () => {
-    return (
-      <span className="text-lg">
-        {i18n.language === 'it' ? '🇮🇹' : '🇬🇧'}
-      </span>
-    );
+    return i18n.language === 'it' ? <ItalyFlag /> : <UKFlag />;
   };
 
   const getLanguageInfo = (lng) => {
     return lng === 'it' 
-      ? { flag: '🇮🇹', name: 'Italiano' }
-      : { flag: '🇬🇧', name: 'English' };
+      ? { flag: <ItalyFlag />, name: 'Italiano' }
+      : { flag: <UKFlag />, name: 'English' };
   };
 
   return (
@@ -77,14 +92,14 @@ const Header = () => {
                   onClick={() => changeLanguage('it')}
                   className={`w-full px-3 py-2 text-left flex items-center space-x-2 hover:bg-gray-50 first:rounded-t-lg ${i18n.language === 'it' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                 >
-                  <span className="text-lg">{getLanguageInfo('it').flag}</span>
+                  {getLanguageInfo('it').flag}
                   <span className="text-sm">{getLanguageInfo('it').name}</span>
                 </button>
                 <button
                   onClick={() => changeLanguage('en')}
                   className={`w-full px-3 py-2 text-left flex items-center space-x-2 hover:bg-gray-50 last:rounded-b-lg ${i18n.language === 'en' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                 >
-                  <span className="text-lg">{getLanguageInfo('en').flag}</span>
+                  {getLanguageInfo('en').flag}
                   <span className="text-sm">{getLanguageInfo('en').name}</span>
                 </button>
               </div>

@@ -109,12 +109,12 @@ jobs:
           echo "📊 Container status:"
           docker compose -f docker/docker-compose.yml ps
           
-          # Verify new code is deployed
-          echo "🔍 Checking if new code is in build..."
-          if docker compose -f docker/docker-compose.yml exec frontend grep -r "Header rendered, current language" /usr/share/nginx/html/static/js/ >/dev/null 2>&1; then
-              echo "✅ New debug code found in build!"
+          # Verify frontend is accessible
+          echo "🔍 Checking if frontend build completed..."
+          if docker compose -f docker/docker-compose.yml exec frontend ls /usr/share/nginx/html/index.html >/dev/null 2>&1; then
+              echo "✅ Frontend build completed successfully!"
           else
-              echo "❌ Debug code NOT found - build might have failed"
+              echo "❌ Frontend build verification failed"
               exit 1
           fi
           

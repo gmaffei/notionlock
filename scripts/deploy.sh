@@ -26,9 +26,22 @@ docker compose -f docker/docker-compose.yml down --timeout 30 || true
 echo "📥 Pulling base images..."
 docker compose -f docker/docker-compose.yml pull postgres redis || true
 
-# Build and deploy
-echo "🔨 Building and starting containers..."
-docker compose -f docker/docker-compose.yml --env-file .env up -d --build
+# Force rebuild frontend (clear cache)
+echo "🗑️  Stopping and removing frontend..."
+docker compose -f docker/docker-compose.yml stop frontend || true
+docker compose -f docker/docker-compose.yml rm -f frontend || true
+
+# Remove frontend image and build cache
+echo "🗑️  Clearing frontend image and build cache..."
+docker rmi notionlock-frontend 2>/dev/null || true
+docker builder prune -f || true
+
+# Build and deploy with no cache
+echo "🔨 Building frontend from scratch..."
+docker compose -f docker/docker-compose.yml --env-file .env build --no-cache frontend
+
+echo "🚀 Starting all containers..."
+docker compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Wait for containers to start
 echo "⏳ Waiting for containers to initialize..."
@@ -37,6 +50,14 @@ sleep 15
 # Check container status
 echo "📊 Container status:"
 docker compose -f docker/docker-compose.yml ps
+
+# Check if frontend built correctly
+echo "🔍 Checking frontend build..."
+if docker compose -f docker/docker-compose.yml exec frontend ls /usr/share/nginx/html/static/js/ >/dev/null 2>&1; then
+    echo "✅ Frontend static files found"
+else
+    echo "❌ Frontend build might have failed - no static files found"
+fi
 
 # Health checks
 echo "🔍 Running health checks..."

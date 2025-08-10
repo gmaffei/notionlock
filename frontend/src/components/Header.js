@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,10 +7,10 @@ const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const [showLanguageMenu, setShowLanguageMenu] = React.useState(false);
+  const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
   // Chiudi menu al click fuori
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (showLanguageMenu && !event.target.closest('.language-dropdown')) {
         setShowLanguageMenu(false);
@@ -32,27 +32,19 @@ const Header = () => {
     localStorage.setItem('language', lng);
   };
 
-  // Flag components
-  const ItalyFlag = () => (
-    <svg width="20" height="15" viewBox="0 0 20 15" className="inline-block">
-      <rect width="6.67" height="15" fill="#009246"/>
-      <rect x="6.67" width="6.67" height="15" fill="#FFFFFF"/>
-      <rect x="13.33" width="6.67" height="15" fill="#CE2B37"/>
-    </svg>
-  );
-
-  const UKFlag = () => (
-    <svg width="20" height="15" viewBox="0 0 20 15" className="inline-block">
-      <rect width="20" height="15" fill="#012169"/>
-      <path d="M0 0L20 15M20 0L0 15" stroke="#FFFFFF" strokeWidth="2"/>
-      <path d="M0 0L20 15M20 0L0 15" stroke="#C8102E" strokeWidth="1"/>
-      <path d="M10 0V15M0 7.5H20" stroke="#FFFFFF" strokeWidth="3"/>
-      <path d="M10 0V15M0 7.5H20" stroke="#C8102E" strokeWidth="2"/>
-    </svg>
-  );
-
+  // Flag icons as emoji
   const getCurrentFlag = () => {
-    return i18n.language === 'it' ? <ItalyFlag /> : <UKFlag />;
+    return (
+      <span className="text-lg">
+        {i18n.language === 'it' ? '🇮🇹' : '🇬🇧'}
+      </span>
+    );
+  };
+
+  const getLanguageInfo = (lng) => {
+    return lng === 'it' 
+      ? { flag: '🇮🇹', name: 'Italiano' }
+      : { flag: '🇬🇧', name: 'English' };
   };
 
   return (
@@ -85,15 +77,15 @@ const Header = () => {
                   onClick={() => changeLanguage('it')}
                   className={`w-full px-3 py-2 text-left flex items-center space-x-2 hover:bg-gray-50 first:rounded-t-lg ${i18n.language === 'it' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                 >
-                  <ItalyFlag />
-                  <span className="text-sm">Italiano</span>
+                  <span className="text-lg">{getLanguageInfo('it').flag}</span>
+                  <span className="text-sm">{getLanguageInfo('it').name}</span>
                 </button>
                 <button
                   onClick={() => changeLanguage('en')}
                   className={`w-full px-3 py-2 text-left flex items-center space-x-2 hover:bg-gray-50 last:rounded-b-lg ${i18n.language === 'en' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
                 >
-                  <UKFlag />
-                  <span className="text-sm">English</span>
+                  <span className="text-lg">{getLanguageInfo('en').flag}</span>
+                  <span className="text-sm">{getLanguageInfo('en').name}</span>
                 </button>
               </div>
             )}

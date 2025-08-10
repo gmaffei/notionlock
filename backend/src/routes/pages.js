@@ -49,9 +49,10 @@ router.post('/', validatePage, async (req, res) => {
   const userId = req.user.userId;
 
   try {
-    // Validate Notion URL
-    if (!notionUrl.includes('notion.site') && !notionUrl.includes('notion.so')) {
-      return res.status(400).json({ error: 'URL deve essere una pagina Notion pubblica' });
+    // Validate Notion URL more strictly
+    const notionUrlPattern = /^https:\/\/[a-zA-Z0-9-]+\.(notion\.site|notion\.so)(\/.+)?$/;
+    if (!notionUrlPattern.test(notionUrl)) {
+      return res.status(400).json({ error: 'URL deve essere una pagina Notion pubblica valida (https://domain.notion.site/...)' });
     }
 
     // Generate unique slug
@@ -67,8 +68,8 @@ router.post('/', validatePage, async (req, res) => {
       attempts++;
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password - use 12 rounds for better security
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create page
     const result = await db.query(
@@ -128,7 +129,7 @@ router.put('/:id', async (req, res) => {
     let paramCount = 1;
 
     if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 12);
       updateFields.push(`password_hash = $${paramCount++}`);
       values.push(hashedPassword);
     }

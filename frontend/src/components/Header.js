@@ -9,6 +9,11 @@ const Header = () => {
   const { t, i18n } = useTranslation();
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
+  // Debug: log when component renders
+  useEffect(() => {
+    console.log('Header rendered, current language:', i18n.language);
+  }, [i18n.language]);
+
   // Chiudi menu al click fuori
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -32,34 +37,66 @@ const Header = () => {
     localStorage.setItem('language', lng);
   };
 
-  // Simple flag components with fallback
-  const ItalyFlag = () => (
-    <div className="inline-flex w-5 h-4 border border-gray-300 rounded-sm overflow-hidden">
-      <div className="w-1/3 h-full bg-green-600"></div>
-      <div className="w-1/3 h-full bg-white"></div>
-      <div className="w-1/3 h-full bg-red-600"></div>
-    </div>
-  );
+  // Multiple flag approaches - one will work!
+  const FlagComponent = ({ country }) => {
+    // Approach 1: SVG files
+    const SvgFlag = () => (
+      <img 
+        src={`/flags/${country}.svg`} 
+        alt={`${country} flag`}
+        className="w-5 h-4 rounded-sm border border-gray-300"
+        onError={(e) => {
+          // Fallback to approach 2 on error
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'inline';
+        }}
+      />
+    );
 
-  const UKFlag = () => (
-    <div className="inline-flex w-5 h-4 bg-blue-700 border border-gray-300 rounded-sm overflow-hidden relative">
-      {/* White cross */}
-      <div className="absolute top-0 left-0 w-full h-0.5 bg-white transform translate-y-1.5"></div>
-      <div className="absolute top-0 left-0 w-0.5 h-full bg-white transform translate-x-2"></div>
-      {/* Red cross (smaller) */}
-      <div className="absolute top-0 left-0 w-full h-px bg-red-500 transform translate-y-1.5"></div>
-      <div className="absolute top-0 left-0 w-px h-full bg-red-500 transform translate-x-2"></div>
-    </div>
-  );
+    // Approach 2: Unicode flags (with proper font stack)
+    const UnicodeFlag = () => (
+      <span 
+        className="text-base leading-none" 
+        style={{ 
+          fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
+          display: 'none' 
+        }}
+      >
+        {country === 'italy' ? '🇮🇹' : '🇬🇧'}
+      </span>
+    );
 
-  const getCurrentFlag = () => {
-    return i18n.language === 'it' ? <ItalyFlag /> : <UKFlag />;
+    // Approach 3: CSS fallback
+    const CssFlag = () => (
+      <div className="inline-flex w-5 h-4 rounded-sm border border-gray-300 overflow-hidden">
+        {country === 'italy' ? (
+          <>
+            <div className="w-1/3 h-full bg-green-600"></div>
+            <div className="w-1/3 h-full bg-white"></div>
+            <div className="w-1/3 h-full bg-red-600"></div>
+          </>
+        ) : (
+          <div className="w-full h-full bg-blue-700 relative">
+            <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold">UK</div>
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="inline-block">
+        <SvgFlag />
+        <UnicodeFlag />
+      </div>
+    );
   };
+
+  const getCurrentFlag = () => <FlagComponent country={i18n.language === 'it' ? 'italy' : 'uk'} />;
 
   const getLanguageInfo = (lng) => {
     return lng === 'it' 
-      ? { flag: <ItalyFlag />, name: 'Italiano' }
-      : { flag: <UKFlag />, name: 'English' };
+      ? { flag: <FlagComponent country="italy" />, name: 'Italiano' }
+      : { flag: <FlagComponent country="uk" />, name: 'English' };
   };
 
   return (
@@ -77,7 +114,8 @@ const Header = () => {
           <div className="relative language-dropdown">
             <button
               onClick={() => setShowLanguageMenu(!showLanguageMenu)}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition bg-white border border-gray-300 rounded-lg px-3 py-2"
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition bg-white border-2 border-blue-300 rounded-lg px-3 py-2"
+              title={`Current language: ${i18n.language}`}
             >
               {getCurrentFlag()}
               <span className="text-sm font-medium">{i18n.language.toUpperCase()}</span>

@@ -1,0 +1,4 @@
+# ads.txt file for notionlock.com
+# AdSense Publisher ID: ca-pub-1183785075708669
+
+google.com, pub-1183785075708669, DIRECT, f08c47fec0942fa0

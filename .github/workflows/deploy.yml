@@ -84,13 +84,9 @@ jobs:
           echo "📥 Pulling base images..."
           docker compose -f docker/docker-compose.yml pull postgres redis || true
           
-          # Build all services completely fresh
-          echo "🔨 Building frontend and backend from absolute scratch..."
-          DOCKER_BUILDKIT=0 docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend backend
-          
-          # Start all containers (database will use existing data)
-          echo "🚀 Starting all containers..."
-          docker compose -f docker/docker-compose.yml --env-file .env up -d
+          # Build and start all containers with forced rebuild
+          echo "🔨 Building and starting frontend and backend from absolute scratch..."
+          docker compose -f docker/docker-compose.yml --env-file .env up -d --build --force-recreate frontend backend
           
           # Verify database data integrity
           echo "🔍 Checking database data..."

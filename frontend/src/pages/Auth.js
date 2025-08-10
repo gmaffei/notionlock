@@ -40,7 +40,7 @@ const Auth = () => {
             <img src="/NotionLock_Logo.png" alt="NotionLock Logo" className="h-12 w-auto" />
             <h1 className="text-3xl font-bold text-blue-600">NotionLock</h1>
           </Link>
-          <p className="text-gray-600 mt-2">Proteggi le tue pagine Notion gratuitamente e facilmente - v2.1</p>
+          <p className="text-gray-600 mt-2">Proteggi le tue pagine Notion gratuitamente e facilmente - v2.2</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-8">

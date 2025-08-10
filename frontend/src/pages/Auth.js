@@ -61,11 +61,13 @@ const Auth = () => {
               </label>
               <input
                 id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="nome@esempio.com"
+                autoComplete="email"
                 required
               />
             </div>
@@ -77,11 +79,13 @@ const Auth = () => {
               <div className="relative">
                 <input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="••••••••"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                   required
                   minLength={6}
                 />

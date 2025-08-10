@@ -123,6 +123,7 @@ const ResetPassword = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoComplete="new-password"
                   placeholder="Nuova password"
                   required
                   disabled={loading}
@@ -140,6 +141,7 @@ const ResetPassword = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoComplete="new-password"
                   placeholder="Conferma password"
                   required
                   disabled={loading}

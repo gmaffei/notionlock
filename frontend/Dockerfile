@@ -18,6 +18,9 @@ ARG REACT_APP_SITE_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 ENV REACT_APP_SITE_URL=$REACT_APP_SITE_URL
 
+# Disable source maps in production (eliminates eval)
+ENV GENERATE_SOURCEMAP=false
+
 # Build the app
 RUN npm run build
 

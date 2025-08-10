@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AdBanner from './AdBanner';
+import CookieSettings from './CookieSettings';
 
 const Footer = () => {
   return (
@@ -31,6 +32,7 @@ const Footer = () => {
             <Link to="/accessibility" className="text-gray-600 hover:text-gray-900 transition">
               Accessibilità
             </Link>
+            <CookieSettings />
           </nav>
         </div>
       </div>

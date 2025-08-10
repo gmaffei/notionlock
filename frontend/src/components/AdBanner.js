@@ -22,27 +22,55 @@ const AdBanner = ({ size = 'horizontal', className = '' }) => {
   const { width, height, class: sizeClass, slot } = sizes[size];
 
   useEffect(() => {
-    // Carica AdSense script se non è già presente
-    if (!window.adsbygoogle) {
-      const script = document.createElement('script');
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CONFIG.publisherId}`;
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      document.head.appendChild(script);
-    }
-
-    // Inizializza l'annuncio dopo un breve delay per assicurarsi che il DOM sia pronto
-    const timer = setTimeout(() => {
+    // Con Cookiebot AUTO BLOCKING, gli script AdSense sono automaticamente bloccati
+    // fino al consenso. Quando l'utente accetta, gli script si riattivano automaticamente.
+    
+    const initializeAds = () => {
       try {
-        if (window.adsbygoogle && window.adsbygoogle.loaded) {
+        if (window.adsbygoogle) {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         }
       } catch (error) {
         console.error('Errore nel caricamento AdSense:', error);
       }
-    }, 100);
+    };
 
-    return () => clearTimeout(timer);
+    // Verifica se Cookiebot è disponibile e se ha consenso per marketing
+    const checkCookiebotConsent = () => {
+      if (window.Cookiebot) {
+        // Se Cookiebot è pronto e ha consenso per marketing, inizializza annunci
+        if (window.Cookiebot.consent && window.Cookiebot.consent.marketing) {
+          initializeAds();
+        }
+        
+        // Ascolta i cambiamenti nel consenso
+        window.addEventListener('CookiebotOnAccept', initializeAds);
+        window.addEventListener('CookiebotOnDecline', () => {
+          console.log('Consenso rifiutato - annunci bloccati');
+        });
+      } else {
+        // Se non c'è Cookiebot (es. sviluppo), carica comunque
+        if (process.env.NODE_ENV === 'development') {
+          initializeAds();
+        }
+      }
+    };
+
+    // Attendi che Cookiebot sia pronto
+    if (window.Cookiebot) {
+      checkCookiebotConsent();
+    } else {
+      // Se Cookiebot non è ancora caricato, aspetta
+      const timer = setTimeout(checkCookiebotConsent, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    // Cleanup degli event listener
+    return () => {
+      if (window.Cookiebot) {
+        window.removeEventListener('CookiebotOnAccept', initializeAds);
+      }
+    };
   }, [ADSENSE_CONFIG.publisherId]);
 
   // Se AdSense non è configurato o è in sviluppo, mostra il placeholder

@@ -96,8 +96,6 @@ jobs:
           # Show current git commit for debugging
           echo "📝 Current commit:"
           git log --oneline -1
-          echo "📁 Frontend Auth.js content:"
-          head -50 frontend/src/pages/Auth.js | grep -A5 -B5 "v2\."
           
           # Build only frontend with maximum force
           echo "🔨 Building ONLY frontend with --no-cache..."
@@ -129,13 +127,13 @@ jobs:
           if docker compose -f docker/docker-compose.yml exec frontend ls /usr/share/nginx/html/index.html >/dev/null 2>&1; then
               echo "✅ Frontend build completed successfully!"
               
-              # Check if new version is in the build
-              echo "🔍 Checking for v2.2 in built files..."
-              if docker compose -f docker/docker-compose.yml exec frontend grep -r "v2\.2" /usr/share/nginx/html/; then
-                  echo "🎉 NEW VERSION v2.2 FOUND IN BUILD!"
+              # Check if version info is present in the build
+              echo "🔍 Checking for version info in built files..."
+              VERSION_FOUND=$(docker compose -f docker/docker-compose.yml exec frontend grep -r "v[0-9]" /usr/share/nginx/html/ | head -1 | sed 's/.*\(v[0-9.]*\).*/\1/' | tr -d '\n\r')
+              if [ -n "$VERSION_FOUND" ]; then
+                  echo "🎉 VERSION $VERSION_FOUND FOUND IN BUILD!"
               else
-                  echo "❌ v2.2 NOT found in build - checking what version is there:"
-                  docker compose -f docker/docker-compose.yml exec frontend grep -r "v2\." /usr/share/nginx/html/ || echo "No version found"
+                  echo "⚠️ No version found in build (but this is not critical)"
               fi
           else
               echo "❌ Frontend build verification failed"

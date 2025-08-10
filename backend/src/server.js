@@ -56,9 +56,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+// Routes - order matters! Specific routes first, then general
 app.use('/api/auth/login', authLimiter, authRoutes); // Rate limit only login
 app.use('/api/auth/register', authLimiter, authRoutes); // Rate limit only register
+app.use('/api/auth/verify-email', authRoutes); // No rate limit on verification
+app.use('/api/auth/me', authRoutes); // No rate limit on user info
 app.use('/api/auth', authRoutes); // All other auth routes without rate limit
 app.use('/api/pages', pagesRoutes);
 app.use('/api/verify', passwordLimiter, publicRoutes);

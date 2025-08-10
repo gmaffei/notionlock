@@ -21,10 +21,13 @@ export const AuthProvider = ({ children }) => {
       try {
         const { data } = await api.get('/auth/me');
         setUser(data.user);
+        setLoading(false);
       } catch (error) {
         console.error('Failed to fetch user:', error);
-        logout();
-      } finally {
+        // Don't call logout() here to avoid infinite loop
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
         setLoading(false);
       }
     };

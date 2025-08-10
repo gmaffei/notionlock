@@ -68,6 +68,8 @@ const Auth = () => {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="nome@esempio.com"
                 autoComplete="email"
+                autoCorrect="off"
+                spellCheck="false"
                 required
               />
             </div>
@@ -86,6 +88,8 @@ const Auth = () => {
                   className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="••••••••"
                   autoComplete={isLogin ? "current-password" : "new-password"}
+                  autoCorrect="off"
+                  spellCheck="false"
                   required
                   minLength={6}
                 />

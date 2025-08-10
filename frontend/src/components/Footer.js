@@ -8,10 +8,13 @@ const Footer = () => {
       <div className="container mx-auto px-4 py-8">
         <AdBanner size="horizontal" className="mb-8" />
         
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div className="mb-4 md:mb-0">
+        <div className="flex flex-col items-center">
+          <div className="mb-4 text-center">
             <p className="text-gray-600">
               © 2024 NotionLock. 100% gratuito, sempre.
+            </p>
+            <p className="text-gray-600">
+              Developed with ❤️ by <a href="https://gmlogic.it" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">GMLogic.it</a>
             </p>
           </div>
           
@@ -24,6 +27,9 @@ const Footer = () => {
             </Link>
             <Link to="/about" className="text-gray-600 hover:text-gray-900 transition">
               Chi Siamo
+            </Link>
+            <Link to="/accessibility" className="text-gray-600 hover:text-gray-900 transition">
+              Accessibilità
             </Link>
           </nav>
         </div>

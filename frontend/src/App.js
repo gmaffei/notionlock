@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import './i18n'; // Importa la configurazione di i18n
 import ProtectedRoute from './components/ProtectedRoute';
@@ -14,6 +14,7 @@ import ResetPassword from './pages/ResetPassword';
 import FAQ from './pages/FAQ';
 import Privacy from './pages/Privacy';
 import About from './pages/About';
+import Accessibility from './pages/Accessibility';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/about" element={<About />} />
+          <Route path="/accessibility" element={<Accessibility />} />
         </Routes>
       </Router>
     </AuthProvider>

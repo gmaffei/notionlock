@@ -13,23 +13,23 @@ const PasswordEntry = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const fetchPageInfo = async () => {
+      try {
+        const { data } = await api.get(`/verify/${slug}/info`);
+        setPageInfo(data);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          setError('Pagina non trovata');
+        } else {
+          setError('Errore nel caricamento della pagina');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchPageInfo();
   }, [slug]);
-
-  const fetchPageInfo = async () => {
-    try {
-      const { data } = await api.get(`/verify/${slug}/info`);
-      setPageInfo(data);
-    } catch (err) {
-      if (err.response?.status === 404) {
-        setError('Pagina non trovata');
-      } else {
-        setError('Errore nel caricamento della pagina');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();

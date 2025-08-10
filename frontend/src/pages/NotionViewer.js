@@ -7,7 +7,7 @@ const NotionViewer = () => {
   const navigate = useNavigate();
   const [notionUrl, setNotionUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error] = useState('');
 
   useEffect(() => {
     // Check if user has valid access token

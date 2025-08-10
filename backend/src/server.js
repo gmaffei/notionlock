@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3001;
 // Database connection
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: false // Disabilitato SSL per PostgreSQL in Docker
 });
 
 // Redis connection
@@ -28,6 +28,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // Middleware
 app.use(helmet());
+app.set('trust proxy', true); // Trust Traefik proxy
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true

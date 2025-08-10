@@ -6,10 +6,10 @@
   "login": "Login",
   "homepage": {
     "hero": {
-      "title_part1": "Protect your Notion pages",
-      "title_part2": "with a simple password",
-      "description": "The only 100% free service that does one thing: protect your Notion pages. No subscriptions, no useless features.",
-      "button": "Start for Free →"
+      "title_part1": "Password Protect Your",
+      "title_part2": "Notion Pages",
+      "description": "Secure your Notion pages with a password. NotionLock offers a 100% free, simple, and robust way to control who sees your content. Share your work confidently.",
+      "button": "Protect a Page for Free →"
     },
     "features": {
       "setup_title": "3-Click Setup",
@@ -51,7 +51,23 @@
       "question3_title": "Can I use my Notion page normally?",
       "question3_answer": "Of course. NotionLock does not modify your original page in any way. It simply creates a password-protected link that points to it."
     },
-    "seo_title": "NotionLock - Password Protect Your Notion Pages",
-    "seo_description": "The only free service to password protect your Notion pages. Easy to use, secure, and 100% free. Get started now!"
+    "seo_title": "NotionLock | Free Password Protection for Your Notion Pages",
+    "seo_description": "Easily secure and share your Notion pages with a password. NotionLock offers free, simple, and robust protection. Set up your private page in seconds."
+  },
+  "accessibility": {
+    "title": "Accessibility Statement",
+    "description": "Our commitment to ensuring NotionLock is accessible to everyone, including people with disabilities.",
+    "commitment_title": "Our Commitment",
+    "commitment_text": "We believe that the web should be available and accessible to anyone, regardless of circumstance and ability. To fulfill this, we aim to adhere as strictly as possible to the Web Content Accessibility Guidelines (WCAG) 2.1 at the AA level, which defines guidelines for improving accessibility for people with disabilities.",
+    "measures_title": "Measures Taken",
+    "measures_text": "We have taken the following measures to ensure accessibility:",
+    "measure_1": "The site's structure is semantic and logical, making it easier for screen readers to navigate.",
+    "measure_2": "We ensure that all interactive elements are accessible via keyboard.",
+    "measure_3": "Text alternatives are provided for non-text content.",
+    "measure_4": "Our design maintains a sufficient color contrast between text and backgrounds.",
+    "measure_5": "The site is responsive and usable on different screen sizes.",
+    "feedback_title": "Feedback",
+    "feedback_text": "We welcome your feedback on the accessibility of NotionLock. If you encounter any barriers or have suggestions, please let us know. You can contact us through the channels provided on our 'About Us' page.",
+    "last_updated": "This statement was last updated on June 30, 2025."
   }
 }

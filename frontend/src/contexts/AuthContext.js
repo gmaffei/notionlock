@@ -17,24 +17,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data } = await api.get('/auth/me');
+        setUser(data.user);
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (token) {
       fetchUser();
     } else {
       setLoading(false);
     }
   }, [token]);
-
-  const fetchUser = async () => {
-    try {
-      const { data } = await api.get('/auth/me');
-      setUser(data.user);
-    } catch (error) {
-      console.error('Failed to fetch user:', error);
-      logout();
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = (newToken) => {
     localStorage.setItem('token', newToken);

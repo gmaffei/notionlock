@@ -1,13 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import AdBanner from './AdBanner';
+
 import CookieSettings from './CookieSettings';
 
 const Footer = () => {
   return (
     <footer className="bg-gray-50 border-t mt-auto">
       <div className="container mx-auto px-4 py-8">
-        <AdBanner size="horizontal" className="mb-8" />
+        
         
         <div className="flex flex-col items-center">
           <div className="mb-4 text-center">

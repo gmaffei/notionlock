@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import AdBanner from '../components/AdBanner';
+
 
 const PasswordEntry = () => {
   const { slug } = useParams();
@@ -138,8 +138,7 @@ const PasswordEntry = () => {
             </form>
           </div>
 
-          {/* Ad Banner */}
-          <AdBanner size="square" className="mb-6" />
+          
 
           {/* Footer */}
           <div className="text-center">

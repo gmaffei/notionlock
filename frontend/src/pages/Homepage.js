@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
@@ -12,6 +12,48 @@ const Homepage = () => {
   const { token } = useAuth();
   const { t } = useTranslation();
 
+  // Pricing State
+  const [pricing, setPricing] = useState(null);
+  const [currency, setCurrency] = useState('USD');
+  const [billingCycle, setBillingCycle] = useState('monthly'); // 'monthly' | 'yearly'
+
+  useEffect(() => {
+    // 1. Detect Currency
+    const userLang = navigator.language || navigator.userLanguage;
+    if (userLang.includes('it') || userLang.includes('fr') || userLang.includes('de') || userLang.includes('es')) {
+      setCurrency('EUR');
+    } else {
+      setCurrency('USD');
+    }
+
+    // 2. Fetch Pricing
+    const fetchPricing = async () => {
+      try {
+        const apiUrl = process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api';
+        const res = await fetch(`${apiUrl}/settings/public/pricing`);
+        if (res.ok) {
+          const data = await res.json();
+          setPricing(data);
+        }
+      } catch (err) {
+        console.error("Failed to load pricing", err);
+      }
+    };
+    fetchPricing();
+  }, []);
+
+  const getPrice = (plan) => {
+    if (!pricing) return '...';
+    const val = currency === 'EUR' ? pricing[plan].eur : pricing[plan].usd;
+    return currency === 'EUR' ? `€${val}` : `$${val}`;
+  };
+
+  const getFeatures = (listKey) => {
+    // Helper to return array from translation resources which might be object or array
+    const features = t(listKey, { returnObjects: true });
+    return Array.isArray(features) ? features : [];
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Helmet>
@@ -20,7 +62,7 @@ const Homepage = () => {
       </Helmet>
 
       <Header />
-      
+
       <main className="flex-1">
         {/* Hero Section */}
         <section className="bg-gradient-to-b from-blue-50 to-white py-20">
@@ -56,20 +98,20 @@ const Homepage = () => {
                 <h3 className="text-xl font-bold mb-3">{t('homepage.features.setup_title')}</h3>
                 <p className="text-gray-600">{t('homepage.features.setup_description')}</p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold mb-3">{t('homepage.features.free_title')}</h3>
                 <p className="text-gray-600">{t('homepage.features.free_description')}</p>
               </div>
-              
+
               <div className="text-center">
-                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4" aria-label={t('homepage.features.privacy_title')}>
-                  <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
@@ -80,37 +122,129 @@ const Homepage = () => {
           </div>
         </section>
 
+        {/* PRICING SECTION */}
+        <section id="pricing" className="py-20 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-bold text-center mb-8">{t('homepage.pricing.title')}</h2>
+
+            {/* Billing Cycle Toggle */}
+            <div className="flex justify-center mb-12">
+              <div className="bg-white p-1 rounded-full border border-gray-200 shadow-sm flex items-center">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${billingCycle === 'monthly' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  {t('homepage.pricing.monthly')}
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800'}`}
+                >
+                  {t('homepage.pricing.yearly')}
+                  <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap hidden sm:inline-block">
+                    -20%
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+
+              {/* Free Plan */}
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Free</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">/mo</span></div>
+                <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg border-2 border-blue-600 text-blue-600 font-bold hover:bg-blue-50 transition mb-8">
+                  {t('homepage.pricing.cta_free')}
+                </button>
+                <ul className="space-y-4">
+                  {getFeatures('homepage.pricing.features_free_list').map((feature, i) => (
+                    <li key={i} className="flex items-center text-gray-600 text-sm">
+                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Pro Plan */}
+              <div className="bg-white p-8 rounded-2xl shadow-xl border-2 border-blue-600 relative transform md:-translate-y-4">
+                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                  {t('homepage.pricing.popular')}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Pro</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-6">
+                  {billingCycle === 'monthly' ? getPrice('monthly') : getPrice('yearly')}
+                  <span className="text-lg font-normal text-gray-500">
+                    {billingCycle === 'monthly' ? '/mo' : '/yr'}
+                  </span>
+                </div>
+                <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition mb-8 shadow-lg">
+                  {t('homepage.pricing.cta_pro')}
+                </button>
+                <ul className="space-y-4">
+                  {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
+                    <li key={i} className="flex items-center text-gray-600 text-sm">
+                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Lifetime Deal (Only if enabled) */}
+              {pricing?.lifetime?.enabled && (
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-8 rounded-2xl shadow-sm border border-yellow-200">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Lifetime</h3>
+                  <div className="text-4xl font-bold text-gray-900 mb-6">{getPrice('lifetime')}<span className="text-lg font-normal text-gray-500">/once</span></div>
+                  <div className="mb-8">
+                    <p className="text-sm text-gray-600 mb-4">Paga una volta, tuo per sempre. Include tutti gli aggiornamenti futuri del piano Pro.</p>
+                    <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg bg-yellow-400 text-yellow-900 font-bold hover:bg-yellow-500 transition shadow">
+                      {t('homepage.pricing.cta_lifetime')}
+                    </button>
+                  </div>
+                  <ul className="space-y-4">
+                    <li className="flex items-center text-gray-700 text-sm">
+                      <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                      <strong>One-time Payment</strong>
+                    </li>
+                    <li className="flex items-center text-gray-700 text-sm">
+                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      All Pro Features
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </section>
+
         {/* How it Works Section */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-white">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">{t('homepage.how_it_works.title')}</h2>
-            
+
             <div className="max-w-4xl mx-auto">
               <div className="space-y-12">
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">
-                    1
-                  </div>
+                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">1</div>
                   <div className="flex-1">
                     <h3 className="text-xl font-bold mb-2">{t('homepage.how_it_works.step1_title')}</h3>
                     <p className="text-gray-600">{t('homepage.how_it_works.step1_description')}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">
-                    2
-                  </div>
+                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">2</div>
                   <div className="flex-1">
                     <h3 className="text-xl font-bold mb-2">{t('homepage.how_it_works.step2_title')}</h3>
                     <p className="text-gray-600">{t('homepage.how_it_works.step2_description')}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">
-                    3
-                  </div>
+                  <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-lg">3</div>
                   <div className="flex-1">
                     <h3 className="text-xl font-bold mb-2">{t('homepage.how_it_works.step3_title')}</h3>
                     <p className="text-gray-600">{t('homepage.how_it_works.step3_description')}</p>
@@ -122,19 +256,19 @@ const Homepage = () => {
         </section>
 
         {/* Testimonials Section */}
-        <section className="py-20">
+        <section className="py-20 bg-gray-50">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">{t('homepage.testimonials.title')}</h2>
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              <div className="bg-gray-100 p-6 rounded-lg">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
                 <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial1_text')}</p>
                 <p className="font-bold">{t('homepage.testimonials.testimonial1_author')}</p>
               </div>
-              <div className="bg-gray-100 p-6 rounded-lg">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
                 <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial2_text')}</p>
                 <p className="font-bold">{t('homepage.testimonials.testimonial2_author')}</p>
               </div>
-              <div className="bg-gray-100 p-6 rounded-lg">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
                 <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial3_text')}</p>
                 <p className="font-bold">{t('homepage.testimonials.testimonial3_author')}</p>
               </div>
@@ -143,7 +277,7 @@ const Homepage = () => {
         </section>
 
         {/* FAQ Section */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">{t('homepage.faq.title')}</h2>
             <div className="max-w-2xl mx-auto">
@@ -184,7 +318,7 @@ const Homepage = () => {
           </div>
         </section>
       </main>
-      
+
       <Footer />
     </div>
   );

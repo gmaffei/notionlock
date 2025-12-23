@@ -13,6 +13,7 @@ const authRoutes = require('./routes/auth');
 const pagesRoutes = require('./routes/pages');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin'); // Added admin routes import
+const settingsRoutes = require('./routes/settings');
 
 // Initialize Express
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/pages', pagesRoutes);
 app.use('/api/verify', passwordLimiter, publicRoutes);
 app.use('/api/p', publicRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

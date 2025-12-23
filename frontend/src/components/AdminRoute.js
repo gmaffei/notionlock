@@ -13,7 +13,7 @@ const AdminRoute = ({ children }) => {
         );
     }
 
-    if (!user || user.role !== 'admin') {
+    if (!user || !['admin', 'superadmin'].includes(user.role)) {
         return <Navigate to="/dashboard" replace />;
     }
 

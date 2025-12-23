@@ -146,7 +146,7 @@ const Header = () => {
 
           {user ? (
             <>
-              {user.role === 'admin' && (
+              {['admin', 'superadmin'].includes(user.role) && (
                 <Link to="/admin" className="text-orange-600 font-bold hover:text-orange-700 transition flex items-center gap-1">
                   🛡️ Admin
                 </Link>

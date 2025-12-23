@@ -20,7 +20,7 @@ module.exports = async function (req, res, next) {
             return res.status(401).json({ error: 'Utente non trovato' });
         }
 
-        if (result.rows[0].role !== 'admin') {
+        if (!['admin', 'superadmin'].includes(result.rows[0].role)) {
             return res.status(403).json({ error: 'Accesso negato: Richiesti privilegi di amministratore' });
         }
 

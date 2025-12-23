@@ -144,7 +144,7 @@ const EditPageModal = ({ isOpen, onClose, page, onSuccess }) => {
           </div>
 
           <div className="border-t pt-4 mt-4">
-            <DomainManager page={page} />
+            <DomainManager pageId={page.id} userStatus={user?.subscription_status} userRole={user?.role} />
           </div>
 
           <div className="flex justify-end space-x-3 mt-6">

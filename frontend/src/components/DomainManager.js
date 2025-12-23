@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
-const DomainManager = ({ pageId, userStatus }) => {
+const DomainManager = ({ pageId, userStatus, userRole }) => {
     const [domains, setDomains] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newDomain, setNewDomain] = useState('');
@@ -10,7 +10,7 @@ const DomainManager = ({ pageId, userStatus }) => {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
-    const isPro = ['pro', 'lifetime', 'lifetime_pro'].includes(userStatus);
+    const isPro = ['pro', 'lifetime', 'lifetime_pro'].includes(userStatus) || ['admin', 'superadmin'].includes(userRole);
 
     useEffect(() => {
         if (pageId) fetchDomains();

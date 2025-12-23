@@ -65,6 +65,7 @@ services:
       args:
         REACT_APP_API_URL: ${REACT_APP_API_URL}
         REACT_APP_SITE_URL: ${REACT_APP_SITE_URL}
+        REACT_APP_PAYPAL_CLIENT_ID: ${REACT_APP_PAYPAL_CLIENT_ID}
     container_name: notionlock-frontend
     restart: unless-stopped
     networks:

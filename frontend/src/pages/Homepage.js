@@ -165,9 +165,19 @@ const Homepage = () => {
                 <div className="mb-8 opacity-90 text-sm">
                   {currency === 'EUR' ? "Accesso completo a vita + Tutti gli aggiornamenti futuri." : "Full lifetime access + All future updates included."}
                 </div>
-                <button onClick={() => navigate('/auth')} className="w-full py-4 rounded-xl bg-white text-blue-700 font-bold hover:bg-gray-100 transition mb-8 shadow-lg text-lg">
-                  {t('homepage.pricing.cta_pro')}
-                </button>
+
+                <div className="mb-8">
+                  <PayPalButton
+                    amount={getPrice('lifetime').replace(/[^0-9.]/g, '')}
+                    currency={currency}
+                    onSuccess={() => {
+                      alert("Payment Successful! Welcome to Pro.");
+                      window.location.reload();
+                    }}
+                    onError={(msg) => alert(msg)}
+                  />
+                </div>
+
                 <ul className="space-y-4">
                   {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
                     <li key={i} className="flex items-center text-blue-100 text-sm">

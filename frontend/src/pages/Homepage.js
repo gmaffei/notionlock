@@ -6,6 +6,7 @@ import Footer from '../components/Footer';
 import AdBanner from '../components/AdBanner';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet';
+import PayPalButton from '../components/PayPalButton';
 
 const Homepage = () => {
   const navigate = useNavigate();

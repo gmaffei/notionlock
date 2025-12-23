@@ -69,6 +69,7 @@ app.use('/api/verify', passwordLimiter, publicRoutes);
 app.use('/api/p', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/checkout', checkoutRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

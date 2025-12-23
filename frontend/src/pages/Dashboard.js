@@ -80,11 +80,26 @@ const Dashboard = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
                   <p className="text-gray-600 mt-1">Benvenuto, {user?.email}</p>
-                  {user?.subscription_status === 'free' && (
-                    <p className="text-sm text-yellow-600 mt-1 font-medium">
-                      Piano Free: {pages.length}/5 Pagine utilizzate
-                    </p>
-                  )}
+
+                  <div className="mt-3 flex items-center gap-3">
+                    {user?.subscription_status === 'free' ? (
+                      <>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Piano Free
+                        </span>
+                        <span className="text-sm text-yellow-600 font-medium">
+                          {pages.length}/5 Pagine utilizzate
+                        </span>
+                        <a href="/#pricing" className="text-sm text-blue-600 hover:text-blue-800 font-semibold underline">
+                          Passa a Pro 🚀
+                        </a>
+                      </>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-sm">
+                        🏆 Pro Lifetime
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex space-x-3">
                   <button
@@ -183,7 +198,7 @@ const Dashboard = () => {
                         <button
                           onClick={() => handleEditPage(page)}
                           className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition"
-                          title="Modifica"
+                          title="Modifica & Gestisci Domini"
                         >
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

@@ -198,6 +198,13 @@ router.post('/verify-email', async (req, res) => {
       [user.id]
     );
 
+    // Send Welcome Email
+    try {
+      await emailService.sendWelcomeEmail(user.email);
+    } catch (err) {
+      console.error("Failed to send welcome email:", err);
+    }
+
     res.json({ message: 'Email verificata con successo' });
   } catch (error) {
     console.error('Email verification error:', error);

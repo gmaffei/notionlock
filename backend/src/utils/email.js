@@ -32,10 +32,10 @@ class EmailService {
   async sendVerificationEmail(email, token) {
     console.log('Attempting to send verification email to:', email);
     console.log('Verification token:', token);
-    
+
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     console.log('Verification URL:', verificationUrl);
-    
+
     const mailOptions = {
       from: process.env.FROM_EMAIL || process.env.SMTP_USER,
       to: email,
@@ -64,7 +64,7 @@ class EmailService {
         to: mailOptions.to,
         subject: mailOptions.subject
       });
-      
+
       const result = await this.transporter.sendMail(mailOptions);
       console.log('Verification email sent successfully:', result.messageId);
       return result;
@@ -81,7 +81,7 @@ class EmailService {
 
   async sendPasswordResetEmail(email, token) {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    
+
     const mailOptions = {
       from: process.env.FROM_EMAIL || process.env.SMTP_USER,
       to: email,
@@ -125,6 +125,83 @@ class EmailService {
       `
     };
 
+    return this.transporter.sendMail(mailOptions);
+  }
+
+  async sendWelcomeEmail(email) {
+    const dashboardUrl = `${process.env.FRONTEND_URL}/dashboard`;
+    const mailOptions = {
+      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      to: email,
+      subject: 'Benvenuto in NotionLock! 🚀',
+      html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #4F46E5;">Benvenuto a bordo!</h1>
+                <p>Urrà! Il tuo account è stato verificato con successo.</p>
+                <p>Ora puoi iniziare a proteggere le tue pagine Notion in pochi click.</p>
+                
+                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin-top:0;">Primi Passi:</h3>
+                    <ol>
+                        <li>Vai alla tua Dashboard.</li>
+                        <li>Incolla il link pubblico della tua pagina Notion.</li>
+                        <li>Imposta una password.</li>
+                        <li>Condividi il link protetto!</li>
+                    </ol>
+                </div>
+
+                <a href="${dashboardUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0;">
+                    Vai alla Dashboard
+                </a>
+            </div>
+        `
+    };
+    return this.transporter.sendMail(mailOptions);
+  }
+
+  async sendPaymentSuccessEmail(email, planName, amount, currency) {
+    const mailOptions = {
+      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      to: email,
+      subject: 'Pagamento Confermato - NotionLock Pro',
+      html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #10B981;">Pagamento Ricevuto! 🎉</h2>
+                  <p>Grazie per aver scelto NotionLock Pro.</p>
+                  <p>Il tuo pagamento di <strong>${amount} ${currency}</strong> per il piano <strong>${planName}</strong> è stato confermato.</p>
+                  
+                  <p>Le funzionalità Pro sono ora attive sul tuo account:</p>
+                  <ul>
+                      <li>Nessuna pubblicità</li>
+                      <li>Badge NotionLock rimosso</li>
+                      <li>Supporto prioritario</li>
+                  </ul>
+
+                  <p>Puoi scaricare la ricevuta dalla tua dashboard.</p>
+              </div>
+          `
+    };
+    return this.transporter.sendMail(mailOptions);
+  }
+
+  async sendSubscriptionExpiryEmail(email) {
+    const renewUrl = `${process.env.FRONTEND_URL}/pricing`; // Adjust if needed
+    const mailOptions = {
+      from: process.env.FROM_EMAIL || process.env.SMTP_USER,
+      to: email,
+      subject: 'Il tuo abbonamento NotionLock è scaduto',
+      html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #EF4444;">Abbonamento Scaduto</h2>
+                  <p>Il tuo abbonamento a NotionLock Pro è scaduto.</p>
+                  <p>Il tuo account è tornato al piano gratuito. Le tue pagine rimangono protette, ma vedrai nuovamente le pubblicità e il badge NotionLock.</p>
+                  
+                  <a href="${renewUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">
+                      Rinnova Ora
+                  </a>
+              </div>
+          `
+    };
     return this.transporter.sendMail(mailOptions);
   }
 }

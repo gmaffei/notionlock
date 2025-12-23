@@ -139,7 +139,11 @@ jobs:
               echo "❌ Frontend build verification failed"
               exit 1
           fi
-          
+
+          # Run Admin Migration
+          echo "🔄 Running Database Migrations (Admin Role)..."
+          docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-admin.js || echo "⚠️ Migration warning (check logs)"
+
           # Clean up old images
           echo "🧹 Final cleanup..."
           docker image prune -f || true

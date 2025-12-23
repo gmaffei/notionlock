@@ -6,6 +6,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Homepage from './pages/Homepage';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminRoute from './components/AdminRoute';
 import PasswordEntry from './pages/PasswordEntry';
 import NotionViewer from './pages/NotionViewer';
 import EmailVerification from './pages/EmailVerification';
@@ -27,6 +29,11 @@ function App() {
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
           } />
           <Route path="/p/:slug" element={<PasswordEntry />} />
           <Route path="/view/:slug" element={<NotionViewer />} />

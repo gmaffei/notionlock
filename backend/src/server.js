@@ -12,6 +12,7 @@ const Redis = require('ioredis');
 const authRoutes = require('./routes/auth');
 const pagesRoutes = require('./routes/pages');
 const publicRoutes = require('./routes/public');
+const adminRoutes = require('./routes/admin'); // Added admin routes import
 
 // Initialize Express
 const app = express();
@@ -65,6 +66,7 @@ app.use('/api/auth', authRoutes); // All other auth routes without rate limit
 app.use('/api/pages', pagesRoutes);
 app.use('/api/verify', passwordLimiter, publicRoutes);
 app.use('/api/p', publicRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -75,8 +77,8 @@ app.get('/api/health', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' 
-      ? 'Si è verificato un errore' 
+    error: process.env.NODE_ENV === 'production'
+      ? 'Si è verificato un errore'
       : err.message
   });
 });

@@ -37,7 +37,12 @@ const ProtectedRoute = ({ children, requireEmailVerification = true }) => {
             >
               Ho verificato la mia email
             </button>
-            <Navigate to="/auth" />
+            <button
+              onClick={() => window.location.pathname = '/auth'}
+              className="w-full bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition"
+            >
+              Torna al login
+            </button>
           </div>
         </div>
       </div>

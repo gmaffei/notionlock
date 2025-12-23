@@ -20,7 +20,7 @@ const validateLogin = [
 // Register
 router.post('/register', validateRegister, async (req, res) => {
   console.log('Registration attempt received:', { email: req.body.email });
-  
+
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     console.log('Validation errors:', errors.array());
@@ -110,7 +110,7 @@ router.post('/login', validateLogin, async (req, res) => {
   try {
     // Find user
     const result = await db.query(
-      'SELECT id, email, password_hash FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, role FROM users WHERE email = $1',
       [email]
     );
 
@@ -137,7 +137,8 @@ router.post('/login', validateLogin, async (req, res) => {
       token,
       user: {
         id: user.id,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {
@@ -156,10 +157,10 @@ router.get('/me', async (req, res) => {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const { db } = req;
     const result = await db.query(
-      'SELECT id, email, email_verified, created_at FROM users WHERE id = $1',
+      'SELECT id, email, role, email_verified, created_at FROM users WHERE id = $1',
       [decoded.userId]
     );
 
@@ -316,7 +317,7 @@ router.post('/change-password', [
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const { currentPassword, newPassword } = req.body;
     const { db } = req;
 

@@ -41,8 +41,8 @@ const Header = () => {
   const FlagComponent = ({ country }) => {
     // Approach 1: SVG files
     const SvgFlag = () => (
-      <img 
-        src={`/flags/${country}.svg`} 
+      <img
+        src={`/flags/${country}.svg`}
         alt={`${country} flag`}
         className="w-5 h-4 rounded-sm border border-gray-300"
         onError={(e) => {
@@ -55,11 +55,11 @@ const Header = () => {
 
     // Approach 2: Unicode flags (with proper font stack)
     const UnicodeFlag = () => (
-      <span 
-        className="text-base leading-none" 
-        style={{ 
+      <span
+        className="text-base leading-none"
+        style={{
           fontFamily: '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif',
-          display: 'none' 
+          display: 'none'
         }}
       >
         {country === 'italy' ? '🇮🇹' : '🇬🇧'}
@@ -94,7 +94,7 @@ const Header = () => {
   const getCurrentFlag = () => <FlagComponent country={i18n.language === 'it' ? 'italy' : 'uk'} />;
 
   const getLanguageInfo = (lng) => {
-    return lng === 'it' 
+    return lng === 'it'
       ? { flag: <FlagComponent country="italy" />, name: 'Italiano' }
       : { flag: <FlagComponent country="uk" />, name: 'English' };
   };
@@ -106,11 +106,11 @@ const Header = () => {
           <img src="/NotionLock_Logo.png" alt="NotionLock Logo" className="h-12 w-auto" />
           <span className="text-3xl font-bold text-blue-600 hover:text-blue-700 transition">NotionLock</span>
         </Link>
-        
+
         <nav className="flex items-center space-x-6">
           <Link to="/faq" className="text-gray-600 hover:text-gray-900 transition">{t('faq')}</Link>
           <Link to="/about" className="text-gray-600 hover:text-gray-900 transition">{t('about')}</Link>
-          
+
           <div className="relative language-dropdown">
             <button
               onClick={() => setShowLanguageMenu(!showLanguageMenu)}
@@ -123,7 +123,7 @@ const Header = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            
+
             {showLanguageMenu && (
               <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
                 <button
@@ -146,6 +146,11 @@ const Header = () => {
 
           {user ? (
             <>
+              {user.role === 'admin' && (
+                <Link to="/admin" className="text-orange-600 font-bold hover:text-orange-700 transition flex items-center gap-1">
+                  🛡️ Admin
+                </Link>
+              )}
               <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 transition">{t('dashboard')}</Link>
               <span className="text-gray-500">{user.email}</span>
               <button

@@ -2,7 +2,7 @@ import React from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { useTranslation } from 'react-i18next';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 
 const FAQ = () => {
   const { t } = useTranslation();
@@ -46,7 +46,7 @@ const FAQ = () => {
       </Helmet>
 
       <Header />
-      
+
       <main className="flex-1 bg-gray-50 py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
@@ -64,7 +64,7 @@ const FAQ = () => {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

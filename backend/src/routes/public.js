@@ -4,6 +4,35 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { fetchAndRewriteNotionPage } = require('../utils/proxy');
 
+// Public routes (no auth required)
+
+// Lookup Domain -> Slug
+router.get('/lookup-domain', async (req, res) => {
+  const { domain } = req.query;
+  if (!domain) return res.status(400).json({ error: 'Domain required' });
+
+  const { db } = req;
+
+  try {
+    const result = await db.query(
+      `SELECT p.slug 
+             FROM custom_domains d
+             JOIN protected_pages p ON d.page_id = p.id
+             WHERE d.domain = $1 AND d.verified = TRUE`,
+      [domain]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Domain not found' });
+    }
+
+    res.json({ slug: result.rows[0].slug });
+  } catch (error) {
+    console.error('Lookup error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Verify password and get access
 router.post('/:slug', async (req, res) => {
   const { slug } = req.params;

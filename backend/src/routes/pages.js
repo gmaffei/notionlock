@@ -68,6 +68,21 @@ router.post('/', validatePage, async (req, res) => {
       attempts++;
     }
 
+    // Check Plan Limits (Max 5 pages for Free)
+    const userStatusRes = await db.query('SELECT subscription_status FROM users WHERE id = $1', [userId]);
+    const status = userStatusRes.rows[0]?.subscription_status || 'free';
+
+    if (status === 'free') {
+      const countRes = await db.query('SELECT COUNT(*) FROM protected_pages WHERE user_id = $1', [userId]);
+      const pageCount = parseInt(countRes.rows[0].count);
+      if (pageCount >= 5) {
+        return res.status(403).json({
+          error: 'Limite raggiunto (Max 5 pagine). Passa a Pro per pagine illimitate.',
+          code: 'LIMIT_REACHED'
+        });
+      }
+    }
+
     // Hash password - use 12 rounds for better security
     const hashedPassword = await bcrypt.hash(password, 12);
 

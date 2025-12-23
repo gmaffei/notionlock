@@ -25,7 +25,7 @@
       "save": "Offerta Lancio",
       "popular": "Best Seller",
       "features_free_list": [
-        "Pagine Illimitate",
+        "Max 5 Pagine",
         "1 Password per Link",
         "Branding NotionLock Obbligatorio",
         "URL NotionLock Standard"
@@ -135,7 +135,7 @@
     "q5_title": "Password dimenticata?",
     "q5_answer": "Se perdi la password, dovrai eliminare la pagina protetta e ricrearla.",
     "q6_title": "Limiti pagine?",
-    "q6_answer": "Nessun limite al numero di pagine.",
+    "q6_answer": "Il piano gratuito include 5 pagine. Illimitate con Pro.",
     "q7_title": "Funziona con Notion Free?",
     "q7_answer": "Sì, funziona con qualsiasi account Notion."
   },

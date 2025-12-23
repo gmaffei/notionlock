@@ -10,6 +10,8 @@ const Redis = require('ioredis');
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const checkoutRoutes = require('./routes/checkout');
+const domainRoutes = require('./routes/domains');
 const pagesRoutes = require('./routes/pages');
 const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin'); // Added admin routes import
@@ -70,6 +72,7 @@ app.use('/api/p', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/checkout', checkoutRoutes);
+app.use('/api/domains', domainRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

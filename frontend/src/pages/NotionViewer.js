@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdBanner from '../components/AdBanner';
 
-const NotionViewer = () => {
-  const { slug } = useParams();
+const NotionViewer = ({ predefinedSlug }) => {
+  const { slug: paramSlug } = useParams();
+  const slug = predefinedSlug || paramSlug;
   const navigate = useNavigate();
   const [proxyUrl, setProxyUrl] = useState('');
   const [loading, setLoading] = useState(true);

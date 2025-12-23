@@ -78,6 +78,13 @@ services:
       - "traefik.http.routers.notionlock.tls.certresolver=letsencrypt"
       - "traefik.http.services.notionlock.loadbalancer.server.port=80"
       - "traefik.docker.network=traefik-public"
+      # Catch-all for Custom Domains
+      - "traefik.http.routers.custom-domains.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.custom-domains.priority=1"
+      - "traefik.http.routers.custom-domains.entrypoints=https"
+      - "traefik.http.routers.custom-domains.tls=true"
+      - "traefik.http.routers.custom-domains.tls.certresolver=letsencrypt_http"
+      - "traefik.http.routers.custom-domains.service=notionlock"
 
 networks:
   traefik-public:

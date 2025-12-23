@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import DomainManager from './DomainManager';
 
 const EditPageModal = ({ isOpen, onClose, page, onSuccess }) => {
   const [formData, setFormData] = useState({

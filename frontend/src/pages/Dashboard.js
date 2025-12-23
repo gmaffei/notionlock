@@ -80,6 +80,11 @@ const Dashboard = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
                   <p className="text-gray-600 mt-1">Benvenuto, {user?.email}</p>
+                  {user?.subscription_status === 'free' && (
+                    <p className="text-sm text-yellow-600 mt-1 font-medium">
+                      Piano Free: {pages.length}/5 Pagine utilizzate
+                    </p>
+                  )}
                 </div>
                 <div className="flex space-x-3">
                   <button
@@ -94,6 +99,7 @@ const Dashboard = () => {
                   <button
                     onClick={() => setShowAddModal(true)}
                     className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center space-x-2"
+                    disabled={user?.subscription_status === 'free' && pages.length >= 5}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -138,7 +144,7 @@ const Dashboard = () => {
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">{page.title}</h3>
                         <p className="text-sm text-gray-500 mb-3 break-all">{page.notion_url}</p>
-                        
+
                         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-6">
                           <div className="flex items-center space-x-2">
                             <span className="text-sm text-gray-500">Link protetto:</span>
@@ -155,7 +161,7 @@ const Dashboard = () => {
                               </svg>
                             </button>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2 text-sm text-gray-500">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -163,7 +169,7 @@ const Dashboard = () => {
                             </svg>
                             <span>{page.visits_count} visite</span>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2 text-sm text-gray-500">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -172,7 +178,7 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleEditPage(page)}

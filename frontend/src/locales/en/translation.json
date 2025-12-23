@@ -25,7 +25,7 @@
       "save": "Launch Offer",
       "popular": "Best Seller",
       "features_free_list": [
-        "Unlimited Pages",
+        "Max 5 Pages",
         "1 Password per Link",
         "NotionLock Branding Mandatory",
         "Standard NotionLock URL"
@@ -135,7 +135,7 @@
     "q5_title": "Forgot password?",
     "q5_answer": "If you lose the password, you'll need to create a new page.",
     "q6_title": "Page limits?",
-    "q6_answer": "No limit on number of pages.",
+    "q6_answer": "Free plan includes 5 pages. Unlimited with Pro.",
     "q7_title": "Works with free Notion?",
     "q7_answer": "Yes, works with any Notion account."
   },

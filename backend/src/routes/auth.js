@@ -160,7 +160,7 @@ router.get('/me', async (req, res) => {
 
     const { db } = req;
     const result = await db.query(
-      'SELECT id, email, role, email_verified, created_at FROM users WHERE id = $1',
+      'SELECT id, email, role, email_verified, subscription_status, created_at FROM users WHERE id = $1',
       [decoded.userId]
     );
 

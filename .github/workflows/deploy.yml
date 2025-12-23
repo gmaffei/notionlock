@@ -143,6 +143,10 @@ jobs:
           # Run Admin Migration
           echo "🔄 Running Database Migrations (Admin Role)..."
           docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-admin.js || echo "⚠️ Migration warning (check logs)"
+          
+          # Run Branding & Subscription Migration
+          echo "🔄 Running Branding & Subscription Migrations..."
+          docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-branding.js || echo "⚠️ Branding Migration warning (check logs)"
 
           # Clean up old images
           echo "🧹 Final cleanup..."

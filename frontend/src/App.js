@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { HelmetProvider } from 'react-helmet-async';
 import './i18n'; // Importa la configurazione di i18n
 import ProtectedRoute from './components/ProtectedRoute';
 import Homepage from './pages/Homepage';

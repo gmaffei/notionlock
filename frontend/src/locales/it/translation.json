@@ -20,27 +20,26 @@
       "privacy_description": "Nessun tracking invasivo. I tuoi dati sono al sicuro e protetti."
     },
     "pricing": {
-      "title": "Scegli il piano perfetto per te",
-      "monthly": "Mensile",
-      "yearly": "Annuale",
-      "lifetime": "A Vita",
-      "save": "Risparmia",
-      "popular": "Più Popolare",
+      "title": "Semplice. Trasparente. A Vita.",
+      "lifetime": "Pro Lifetime",
+      "save": "Offerta Lancio",
+      "popular": "Best Seller",
       "features_free_list": [
-        "Protezione Password Illimitata",
         "Pagine Illimitate",
-        "Supportato da Ads",
+        "1 Password per Link",
+        "Branding NotionLock Obbligatorio",
         "URL NotionLock Standard"
       ],
       "features_pro_list": [
-        "Nessuna Pubblicità",
-        "Domini Personalizzati (Coming Soon)",
-        "Analytics Avanzate (Coming Soon)",
+        "Pagamento Unico (No Abbonamenti)",
+        "Rimuovi Branding NotionLock",
+        "Domini Personalizzati",
+        "Gestione Password Multiple",
         "Supporto Prioritario"
       ],
-      "cta_free": "Inizia Gratis",
-      "cta_pro": "Upgrade a Pro",
-      "cta_lifetime": "Ottieni a Vita"
+      "cta_free": "Usa Gratis",
+      "cta_pro": "Acquista a Vita",
+      "cta_lifetime": "Ottieni Pass A Vita"
     },
     "how_it_works": {
       "title": "Come Funziona",

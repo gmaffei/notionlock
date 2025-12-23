@@ -126,14 +126,47 @@ router.get('/view/:slug', async (req, res) => {
       return res.status(403).send('Forbidden: Token mismatch');
     }
 
-    // 2. Get Notion URL
+    // 2. Get Notion URL and Branding Settings
     let pageData = await redis.get(`page:${slug}`);
+    let showBranding = true;
+
     if (!pageData) {
-      const result = await db.query('SELECT notion_url FROM protected_pages WHERE slug = $1', [slug]);
+      // Fetch Page AND User config
+      const result = await db.query(`
+        SELECT p.notion_url, u.branding_enabled, u.subscription_status 
+        FROM protected_pages p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.slug = $1
+      `, [slug]);
+
       if (result.rows.length === 0) return res.status(404).send('Not Found');
-      pageData = { notionUrl: result.rows[0].notion_url };
+
+      const row = result.rows[0];
+      pageData = { notionUrl: row.notion_url };
+
+      // If user is FREE, branding is ALWAYS enabled regardless of setting
+      // If user is PRO/LIFETIME, respect their setting
+      const isPro = row.subscription_status && row.subscription_status !== 'free';
+      showBranding = isPro ? (row.branding_enabled !== false) : true;
+
     } else {
       pageData = JSON.parse(pageData);
+      // For cached pages, we need to decide how to store branding info. 
+      // For now, let's just make a separate lightweight query for branding/settings if cache doesn't have it
+      // OR invalidating cache on setting change.
+      // Easiest for now: just re-query branding status quickly or assume true if missing.
+      // Ideally we'd cache this too. Let's do a quick DB lookup for settings to be reactive.
+      const settingsRes = await db.query(`
+          SELECT u.branding_enabled, u.subscription_status
+          FROM protected_pages p
+          JOIN users u ON p.user_id = u.id
+          WHERE p.slug = $1
+      `, [slug]);
+      if (settingsRes.rows.length > 0) {
+        const row = settingsRes.rows[0];
+        const isPro = row.subscription_status && row.subscription_status !== 'free';
+        showBranding = isPro ? (row.branding_enabled !== false) : true;
+      }
     }
 
     // 3. Fetch and Serve Proxied Content
@@ -141,6 +174,7 @@ router.get('/view/:slug', async (req, res) => {
 
     // Ensure charset is UTF-8 to prevent encoding issues with special chars
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Show-Branding', showBranding.toString()); // Custom Header for Frontend
     res.send(proxiedHtml);
 
   } catch (error) {

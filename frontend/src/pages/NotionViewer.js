@@ -10,6 +10,9 @@ const NotionViewer = () => {
   const [error, setError] = useState('');
   const [token, setToken] = useState('');
 
+  /* State for Branding */
+  const [showBranding, setShowBranding] = useState(true);
+
   useEffect(() => {
     // Check if user has valid access token
     const accessToken = sessionStorage.getItem(`access_${slug}`);
@@ -20,18 +23,6 @@ const NotionViewer = () => {
     }
 
     setToken(accessToken);
-    // Construct local proxy url. 
-    // In production we might want a full URL, but relative works if proxy is on same domain/port or proxied by Nginx
-    // We need to pass the token. Since iframe can't easily pass headers, we might need a query param 
-    // OR we rely on the fact that we can't easily secure the GET request without a cookie or query param.
-    // For MVP security, we will try to fetch the content via a blob or just set the src with a ?token query param
-    // But our backend expects Bearer header.
-    // simpler approach for MVP:
-    // Change backend to accept token in query param too for the view route.
-    // Let's assume we update backend to accept check query param for iframe usage.
-
-    // Actually, to keep it secure without query params in URL history, 
-    // we can fetch the HTML via fetch() with headers, then set the iframe srcdoc.
     fetchProxyContent(accessToken);
   }, [slug, navigate]);
 
@@ -47,6 +38,10 @@ const NotionViewer = () => {
         throw new Error('Failed to load content');
       }
 
+      // Read Branding Header
+      const brandingHeader = response.headers.get('X-Show-Branding');
+      setShowBranding(brandingHeader === 'true');
+
       const html = await response.text();
       setProxyUrl(html); // storing HTML string
     } catch (err) {
@@ -58,26 +53,27 @@ const NotionViewer = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-red-600">
-        {error}
+      <div className="min-h-screen flex items-center justify-center text-red-600 bg-gray-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+          <h3 className="text-xl font-bold mb-2">Access Denied</h3>
+          <p>{error}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    <div className="h-screen w-screen overflow-hidden relative bg-gray-100">
       {/* 
         Using srcDoc to inject the fetched HTML. 
-        This is secure against XSS from our own backend, but Notion content scripts might be tricky.
-        Ideally we sandbox it slightly but allow scripts for Notion to work.
       */}
       <iframe
         title="Notion Content"
@@ -86,10 +82,20 @@ const NotionViewer = () => {
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
       />
 
-      {/* Branding overlay/footer if needed */}
-      <div className="fixed bottom-0 right-0 p-2 bg-white/80 backdrop-blur text-xs text-gray-500 rounded-tl-lg pointer-events-none">
-        Powered by NotionLock
-      </div>
+      {/* Powered By Branding - Only if enabled */}
+      {showBranding && (
+        <a
+          href="https://notionlock.com?utm_source=badge"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-4 right-4 z-50 group flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full shadow-lg border border-gray-100 font-sans hover:-translate-y-1 transition-all duration-300 hover:shadow-xl text-gray-700 hover:text-blue-600 no-underline"
+        >
+          <div className="bg-blue-600 text-white p-1 rounded-full">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+          </div>
+          <span className="text-xs font-semibold tracking-wide">Powered by <span className="font-bold">NotionLock</span></span>
+        </a>
+      )}
     </div>
   );
 };

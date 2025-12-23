@@ -122,99 +122,60 @@ const Homepage = () => {
           </div>
         </section>
 
-        {/* PRICING SECTION */}
+        {/* PRICING SECTION - LTD FOCUS */}
         <section id="pricing" className="py-20 bg-gray-50">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center mb-8">{t('homepage.pricing.title')}</h2>
+            <h2 className="text-4xl font-bold text-center mb-4">{t('homepage.pricing.title')}</h2>
+            <p className="text-center text-gray-500 mb-12 max-w-2xl mx-auto">
+              {currency === 'EUR'
+                ? "Nessun abbonamento ricorrente. Paga una volta sola e sblocca tutte le funzionalità Pro per sempre."
+                : "No recurring subscriptions. Pay once and unlock all Pro features forever."}
+            </p>
 
-            {/* Billing Cycle Toggle */}
-            <div className="flex justify-center mb-12">
-              <div className="bg-white p-1 rounded-full border border-gray-200 shadow-sm flex items-center">
-                <button
-                  onClick={() => setBillingCycle('monthly')}
-                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${billingCycle === 'monthly' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800'}`}
-                >
-                  {t('homepage.pricing.monthly')}
-                </button>
-                <button
-                  onClick={() => setBillingCycle('yearly')}
-                  className={`px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800'}`}
-                >
-                  {t('homepage.pricing.yearly')}
-                  <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full whitespace-nowrap hidden sm:inline-block">
-                    -20%
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
+            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto items-center">
 
               {/* Free Plan */}
               <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Free</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">/mo</span></div>
+                <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">/forever</span></div>
                 <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg border-2 border-blue-600 text-blue-600 font-bold hover:bg-blue-50 transition mb-8">
                   {t('homepage.pricing.cta_free')}
                 </button>
                 <ul className="space-y-4">
                   {getFeatures('homepage.pricing.features_free_list').map((feature, i) => (
                     <li key={i} className="flex items-center text-gray-600 text-sm">
-                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                      <svg className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </div>
 
-              {/* Pro Plan */}
-              <div className="bg-white p-8 rounded-2xl shadow-xl border-2 border-blue-600 relative transform md:-translate-y-4">
-                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-                  {t('homepage.pricing.popular')}
+              {/* Pro Lifetime Plan */}
+              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl shadow-2xl relative transform md:scale-105 text-white">
+                <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                  {t('homepage.pricing.save')}
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Pro</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-6">
-                  {billingCycle === 'monthly' ? getPrice('monthly') : getPrice('yearly')}
-                  <span className="text-lg font-normal text-gray-500">
-                    {billingCycle === 'monthly' ? '/mo' : '/yr'}
-                  </span>
+                <h3 className="text-2xl font-bold mb-2">{t('homepage.pricing.lifetime')}</h3>
+                <div className="text-5xl font-bold mb-6">
+                  {getPrice('lifetime')}
+                  <span className="text-lg font-normal opacity-70 block text-sm mt-1">one-time payment</span>
                 </div>
-                <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 transition mb-8 shadow-lg">
+                <div className="mb-8 opacity-90 text-sm">
+                  {currency === 'EUR' ? "Accesso completo a vita + Tutti gli aggiornamenti futuri." : "Full lifetime access + All future updates included."}
+                </div>
+                <button onClick={() => navigate('/auth')} className="w-full py-4 rounded-xl bg-white text-blue-700 font-bold hover:bg-gray-100 transition mb-8 shadow-lg text-lg">
                   {t('homepage.pricing.cta_pro')}
                 </button>
                 <ul className="space-y-4">
                   {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
-                    <li key={i} className="flex items-center text-gray-600 text-sm">
-                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li key={i} className="flex items-center text-blue-100 text-sm">
+                      <svg className="w-5 h-5 text-yellow-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </div>
-
-              {/* Lifetime Deal (Only if enabled) */}
-              {pricing?.lifetime?.enabled && (
-                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 p-8 rounded-2xl shadow-sm border border-yellow-200">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Lifetime</h3>
-                  <div className="text-4xl font-bold text-gray-900 mb-6">{getPrice('lifetime')}<span className="text-lg font-normal text-gray-500">/once</span></div>
-                  <div className="mb-8">
-                    <p className="text-sm text-gray-600 mb-4">Paga una volta, tuo per sempre. Include tutti gli aggiornamenti futuri del piano Pro.</p>
-                    <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg bg-yellow-400 text-yellow-900 font-bold hover:bg-yellow-500 transition shadow">
-                      {t('homepage.pricing.cta_lifetime')}
-                    </button>
-                  </div>
-                  <ul className="space-y-4">
-                    <li className="flex items-center text-gray-700 text-sm">
-                      <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                      <strong>One-time Payment</strong>
-                    </li>
-                    <li className="flex items-center text-gray-700 text-sm">
-                      <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                      All Pro Features
-                    </li>
-                  </ul>
-                </div>
-              )}
 
             </div>
           </div>

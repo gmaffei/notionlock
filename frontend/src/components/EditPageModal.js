@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import DomainManager from './DomainManager';
 
 const EditPageModal = ({ isOpen, onClose, page, onSuccess }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: page?.title || '',
     password: '',

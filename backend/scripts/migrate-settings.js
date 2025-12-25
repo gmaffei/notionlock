@@ -21,9 +21,9 @@ async function migrate() {
 
         // Insert default pricing configuration if not exists
         const defaultConfig = {
-            monthly: { usd: 4.99, eur: 4.99, paypal_id_usd: '', paypal_id_eur: '' },
-            yearly: { usd: 49.00, eur: 49.00, paypal_id_usd: '', paypal_id_eur: '' },
-            lifetime: { enabled: true, usd: 99.00, eur: 99.00 },
+            monthly: { usd: 4.99, eur: 4.99, variant_id: '' },
+            yearly: { usd: 49.00, eur: 49.00, variant_id: '' },
+            lifetime: { enabled: true, usd: 99.00, eur: 99.00, variant_id: '' },
             discount: { percent: 0, active: false }
         };
 

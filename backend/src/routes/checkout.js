@@ -1,7 +1,6 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
-const paypalService = require('../utils/paypal');
-const emailService = require('../utils/email');
+const lemonSqueezyService = require('../utils/lemonsqueezy');
 
 // Middleware to verify auth token
 const authenticate = (req, res, next) => {
@@ -18,63 +17,29 @@ const authenticate = (req, res, next) => {
     }
 };
 
-// 1. Create Order
-router.post('/create-order', authenticate, async (req, res) => {
-    const { amount, currency } = req.body; // Passed from frontend based on selected pricing
+// Create Checkout Session (returns URL)
+router.post('/', authenticate, async (req, res) => {
+    const { variantId } = req.body;
+    const user = req.user;
 
-    // Basic validation (In prod, fetch price from DB/Settings to prevent tampering)
-    // For MVP, we trust amount but PayPal verifies on capture anyway
+    // Use environment variable for variant ID if not passed (or validate passed one)
+    // For simplicity, we can default to the one in env if matched or just use env
+    const targetVariantId = variantId || process.env.LEMON_SQUEEZY_LIFETIME_VARIANT_ID;
 
-    try {
-        const order = await paypalService.createOrder(amount, currency);
-        res.json(order);
-    } catch (error) {
-        res.status(500).json({ error: 'Errore creazione ordine PayPal' });
+    if (!targetVariantId) {
+        return res.status(500).json({ error: 'Server configuration error: Variant ID missing' });
     }
-});
-
-// 2. Capture Order & Activate features
-router.post('/capture-order', authenticate, async (req, res) => {
-    const { orderId } = req.body;
-    const { db } = req;
-    const userId = req.user.userId;
 
     try {
-        // A. Capture Payment
-        const captureData = await paypalService.captureOrder(orderId);
-
-        if (captureData.status === 'COMPLETED') {
-            const purchaseUnit = captureData.purchase_units[0];
-            const amount = purchaseUnit.payments.captures[0].amount.value;
-            const currency = purchaseUnit.payments.captures[0].amount.currency_code;
-
-            console.log(`Payment captured for user ${userId}: ${amount} ${currency}`);
-
-            // B. Update User Database
-            await db.query(`
-            UPDATE users 
-            SET subscription_status = 'lifetime_pro', 
-                branding_enabled = false,
-                updated_at = NOW()
-            WHERE id = $1
-        `, [userId]);
-
-            // C. Fetch User Email to send receipt
-            const userRes = await db.query('SELECT email FROM users WHERE id = $1', [userId]);
-            if (userRes.rows.length > 0) {
-                const email = userRes.rows[0].email;
-                // D. Send Email
-                await emailService.sendPaymentSuccessEmail(email, "Lifetime Pro", amount, currency)
-                    .catch(err => console.error("Email error:", err));
-            }
-
-            res.json({ success: true, status: 'COMPLETED' });
-        } else {
-            res.status(400).json({ error: 'Pagamento non completato' });
-        }
+        const checkoutUrl = await lemonSqueezyService.createCheckout(
+            targetVariantId,
+            user.userId,
+            user.email
+        );
+        res.json({ url: checkoutUrl });
     } catch (error) {
-        console.error('Capture Error:', error);
-        res.status(500).json({ error: 'Errore durante la cattura del pagamento' });
+        console.error('Checkout creation failed:', error);
+        res.status(500).json({ error: 'Errore creazione checkout' });
     }
 });
 

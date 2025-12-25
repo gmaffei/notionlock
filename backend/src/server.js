@@ -37,7 +37,14 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
+
+// Route imports
+const webhookRoutes = require('./routes/webhook');
 app.use(morgan('combined'));
 
 // Rate limiting
@@ -72,6 +79,7 @@ app.use('/api/p', publicRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/checkout', checkoutRoutes);
+app.use('/api/webhook', webhookRoutes);
 app.use('/api/domains', domainRoutes);
 
 // Health check

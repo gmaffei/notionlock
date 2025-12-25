@@ -65,7 +65,13 @@ services:
       args:
         REACT_APP_API_URL: ${REACT_APP_API_URL}
         REACT_APP_SITE_URL: ${REACT_APP_SITE_URL}
-        REACT_APP_PAYPAL_CLIENT_ID: ${REACT_APP_PAYPAL_CLIENT_ID}
+        # PayPal (Deprecated)
+        # REACT_APP_PAYPAL_CLIENT_ID: ${REACT_APP_PAYPAL_CLIENT_ID}
+        # Lemon Squeezy
+        LEMON_SQUEEZY_API_KEY: ${LEMON_SQUEEZY_API_KEY}
+        LEMON_SQUEEZY_STORE_ID: ${LEMON_SQUEEZY_STORE_ID}
+        LEMON_SQUEEZY_WEBHOOK_SECRET: ${LEMON_SQUEEZY_WEBHOOK_SECRET}
+        LEMON_SQUEEZY_LIFETIME_VARIANT_ID: ${LEMON_SQUEEZY_LIFETIME_VARIANT_ID}
     container_name: notionlock-frontend
     restart: unless-stopped
     networks:

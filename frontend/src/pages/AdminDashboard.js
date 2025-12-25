@@ -37,9 +37,9 @@ const AdminDashboard = () => {
             setStats(statsData);
             // Parse pricing config or use defaults
             setSettings(settingsData.pricing_config || {
-                monthly: { usd: 4.99, eur: 4.99, paypal_id_usd: '', paypal_id_eur: '' },
-                yearly: { usd: 49.00, eur: 49.00, paypal_id_usd: '', paypal_id_eur: '' },
-                lifetime: { enabled: true, usd: 99.00, eur: 99.00 },
+                monthly: { usd: 4.99, eur: 4.99, variant_id: '' },
+                yearly: { usd: 49.00, eur: 49.00, variant_id: '' },
+                lifetime: { enabled: true, usd: 99.00, eur: 99.00, variant_id: '' },
                 discount: { percent: 0, active: false }
             });
 
@@ -152,16 +152,10 @@ const AdminDashboard = () => {
                                             className="w-full border rounded p-2" />
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-sm text-gray-600">PayPal Plan ID (USD)</label>
-                                        <input type="text" value={settings.monthly.paypal_id_usd || ''}
-                                            onChange={e => handleSettingChange('monthly', 'paypal_id_usd', e.target.value)}
-                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="P-..." />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-sm text-gray-600">PayPal Plan ID (EUR)</label>
-                                        <input type="text" value={settings.monthly.paypal_id_eur || ''}
-                                            onChange={e => handleSettingChange('monthly', 'paypal_id_eur', e.target.value)}
-                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="P-..." />
+                                        <label className="block text-sm text-gray-600">Variant ID</label>
+                                        <input type="text" value={settings.monthly.variant_id || ''}
+                                            onChange={e => handleSettingChange('monthly', 'variant_id', e.target.value)}
+                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="variant_..." />
                                     </div>
                                 </div>
                             </div>
@@ -183,16 +177,10 @@ const AdminDashboard = () => {
                                             className="w-full border rounded p-2" />
                                     </div>
                                     <div className="col-span-2">
-                                        <label className="block text-sm text-gray-600">PayPal Plan ID (USD)</label>
-                                        <input type="text" value={settings.yearly.paypal_id_usd || ''}
-                                            onChange={e => handleSettingChange('yearly', 'paypal_id_usd', e.target.value)}
-                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="P-..." />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-sm text-gray-600">PayPal Plan ID (EUR)</label>
-                                        <input type="text" value={settings.yearly.paypal_id_eur || ''}
-                                            onChange={e => handleSettingChange('yearly', 'paypal_id_eur', e.target.value)}
-                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="P-..." />
+                                        <label className="block text-sm text-gray-600">Variant ID</label>
+                                        <input type="text" value={settings.yearly.variant_id || ''}
+                                            onChange={e => handleSettingChange('yearly', 'variant_id', e.target.value)}
+                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="variant_..." />
                                     </div>
                                 </div>
                             </div>
@@ -223,6 +211,12 @@ const AdminDashboard = () => {
                                         <input type="number" step="0.01" value={settings.lifetime.eur}
                                             onChange={e => handleSettingChange('lifetime', 'eur', parseFloat(e.target.value))}
                                             className="w-full border rounded p-2" />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm text-gray-600">Variant ID</label>
+                                        <input type="text" value={settings.lifetime.variant_id || ''}
+                                            onChange={e => handleSettingChange('lifetime', 'variant_id', e.target.value)}
+                                            className="w-full border rounded p-2 text-xs font-mono" placeholder="variant_..." />
                                     </div>
                                 </div>
                             </div>

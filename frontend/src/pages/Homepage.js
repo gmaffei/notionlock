@@ -6,7 +6,7 @@ import Footer from '../components/Footer';
 import AdBanner from '../components/AdBanner';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import PayPalButton from '../components/PayPalButton';
+import LemonSqueezyButton from '../components/LemonSqueezyButton';
 
 const Homepage = () => {
   const navigate = useNavigate();
@@ -167,15 +167,13 @@ const Homepage = () => {
                 </div>
 
                 <div className="mb-8">
-                  <PayPalButton
-                    amount={getPrice('lifetime').replace(/[^0-9.]/g, '')}
-                    currency={currency}
-                    onSuccess={() => {
-                      alert("Payment Successful! Welcome to Pro.");
-                      window.location.reload();
-                    }}
-                    onError={(msg) => alert(msg)}
-                  />
+                  <LemonSqueezyButton
+                    variantId={process.env.REACT_APP_LEMON_SQUEEZY_LIFETIME_VARIANT_ID}
+                    className="bg-yellow-400 text-yellow-900 px-8 py-3 rounded-lg font-bold hover:bg-yellow-300 transition shadow-lg w-full"
+                  >
+                    {t('homepage.pricing.cta_lifetime', 'Acquista a Vita')}
+                  </LemonSqueezyButton>
+                  <p className="text-xs text-center mt-2 opacity-80">Sicuro e protetto da Lemon Squeezy</p>
                 </div>
 
                 <ul className="space-y-4">

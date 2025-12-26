@@ -60,8 +60,22 @@ const Auth = () => {
 
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-center mb-6">
-            {isLogin ? 'Accedi al tuo account' : 'Crea un nuovo account'}
+            {isLogin ? 'Accedi al tuo account' : 'Inizia a proteggere le tue pagine'}
           </h2>
+
+          {!isLogin && (
+            <div className="mb-6 space-y-2">
+              <div className="flex items-center text-sm text-gray-600">
+                <span className="text-green-500 mr-2">✓</span> Nessuna carta di credito richiesta
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <span className="text-green-500 mr-2">✓</span> Piano Free per sempre
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <span className="text-green-500 mr-2">✓</span> Setup in meno di 30 secondi
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
@@ -156,7 +170,7 @@ const Auth = () => {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Attendere...' : (isLogin ? 'Accedi' : 'Registrati')}
+              {loading ? 'Attendere...' : (isLogin ? 'Accedi' : 'Crea Account Gratuito')}
             </button>
           </form>
 
@@ -179,7 +193,7 @@ const Auth = () => {
                 }}
                 className="text-blue-600 hover:underline font-medium"
               >
-                {isLogin ? 'Registrati' : 'Accedi'}
+                {isLogin ? 'Inizia Gratis' : 'Accedi'}
               </button>
             </p>
           </div>

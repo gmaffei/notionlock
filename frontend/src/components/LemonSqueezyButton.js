@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const LemonSqueezyButton = ({ variantId, children, className }) => {
     const { token } = useAuth();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
 
     const handleCheckout = async () => {
+        if (!token) {
+            navigate('/auth');
+            return;
+        }
+
         setLoading(true);
         try {
             const apiUrl = process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api';

@@ -133,58 +133,110 @@ const Homepage = () => {
                 : "No recurring subscriptions. Pay once and unlock all Pro features forever."}
             </p>
 
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto items-center">
+            {/* Billing Toggle */}
+            <div className="flex justify-center mb-12">
+              <div className="bg-white p-1 rounded-full border border-gray-200 shadow-sm inline-flex relative">
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'monthly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                >
+                  {t('homepage.pricing.monthly', 'Monthly')}
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'yearly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                >
+                  {t('homepage.pricing.yearly', 'Yearly')}
+                  {/* Badge for discount if needed */}
+                  {billingCycle === 'yearly' && (
+                    <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">
+                      -17%
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className={`grid md:grid-cols-${(pricing?.monthly?.variant_id || pricing?.yearly?.variant_id) ? '3' : '2'} gap-8 max-w-6xl mx-auto items-stretch`}>
 
               {/* Free Plan */}
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">/forever</span></div>
                 <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg border-2 border-blue-600 text-blue-600 font-bold hover:bg-blue-50 transition mb-8">
                   {t('homepage.pricing.cta_free')}
                 </button>
-                <ul className="space-y-4">
+                <ul className="space-y-4 flex-1">
                   {getFeatures('homepage.pricing.features_free_list').map((feature, i) => (
-                    <li key={i} className="flex items-center text-gray-600 text-sm">
-                      <svg className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                    <li key={i} className="flex items-start text-gray-600 text-sm">
+                      <svg className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                       {feature}
                     </li>
                   ))}
                 </ul>
               </div>
+
+              {/* Pro Subscription (Monthly/Yearly) */}
+              {((billingCycle === 'monthly' && pricing?.monthly?.variant_id) || (billingCycle === 'yearly' && pricing?.yearly?.variant_id)) && (
+                <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-blue-600 relative flex flex-col transform md:-translate-y-4">
+                  <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
+                    MOST POPULAR
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Pro {billingCycle === 'monthly' ? 'Monthly' : 'Yearly'}</h3>
+                  <div className="text-4xl font-bold text-gray-900 mb-6">
+                    {getPrice(billingCycle)}
+                    <span className="text-lg font-normal text-gray-500">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                  </div>
+
+                  <div className="mb-8">
+                    <LemonSqueezyButton
+                      variantId={billingCycle === 'monthly' ? pricing?.monthly?.variant_id : pricing?.yearly?.variant_id}
+                      className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-lg w-full"
+                    >
+                      {t('homepage.pricing.cta_subscribe', 'Subscribe Now')}
+                    </LemonSqueezyButton>
+                    <p className="text-xs text-center mt-2 text-gray-400">Cancel anytime</p>
+                  </div>
+
+                  <ul className="space-y-4 flex-1">
+                    {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
+                      <li key={i} className="flex items-start text-gray-700 text-sm">
+                        <svg className="w-5 h-5 text-blue-500 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Pro Lifetime Plan */}
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl shadow-2xl relative transform md:scale-105 text-white">
-                <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-                  {t('homepage.pricing.save')}
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{t('homepage.pricing.lifetime')}</h3>
-                <div className="text-5xl font-bold mb-6">
-                  {getPrice('lifetime')}
-                  <span className="text-lg font-normal opacity-70 block text-sm mt-1">one-time payment</span>
-                </div>
-                <div className="mb-8 opacity-90 text-sm">
-                  {currency === 'EUR' ? "Accesso completo a vita + Tutti gli aggiornamenti futuri." : "Full lifetime access + All future updates included."}
-                </div>
+              {pricing?.lifetime?.enabled && (
+                <div className="bg-gradient-to-br from-indigo-900 to-gray-900 p-8 rounded-2xl shadow-sm border border-gray-800 text-white flex flex-col">
+                  <h3 className="text-xl font-bold mb-2">{t('homepage.pricing.lifetime')}</h3>
+                  <div className="text-4xl font-bold mb-6">
+                    {getPrice('lifetime')}
+                    <span className="text-lg font-normal opacity-70 block text-sm mt-1">one-time</span>
+                  </div>
 
-                <div className="mb-8">
-                  <LemonSqueezyButton
-                    variantId={process.env.REACT_APP_LEMON_SQUEEZY_LIFETIME_VARIANT_ID}
-                    className="bg-yellow-400 text-yellow-900 px-8 py-3 rounded-lg font-bold hover:bg-yellow-300 transition shadow-lg w-full"
-                  >
-                    {t('homepage.pricing.cta_lifetime', 'Acquista a Vita')}
-                  </LemonSqueezyButton>
-                  <p className="text-xs text-center mt-2 opacity-80">Sicuro e protetto da Lemon Squeezy</p>
-                </div>
+                  <div className="mb-8">
+                    <LemonSqueezyButton
+                      variantId={process.env.REACT_APP_LEMON_SQUEEZY_LIFETIME_VARIANT_ID}
+                      className="bg-gray-700 text-white border border-gray-600 px-8 py-3 rounded-lg font-bold hover:bg-gray-600 transition shadow-lg w-full"
+                    >
+                      {t('homepage.pricing.cta_lifetime', 'Get Lifetime')}
+                    </LemonSqueezyButton>
+                  </div>
 
-                <ul className="space-y-4">
-                  {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
-                    <li key={i} className="flex items-center text-blue-100 text-sm">
-                      <svg className="w-5 h-5 text-yellow-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  <ul className="space-y-4 flex-1">
+                    {getFeatures('homepage.pricing.features_pro_list').map((feature, i) => (
+                      <li key={i} className="flex items-start text-gray-300 text-sm">
+                        <svg className="w-5 h-5 text-indigo-400 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
             </div>
           </div>

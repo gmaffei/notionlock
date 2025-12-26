@@ -300,6 +300,27 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            {/* Help Section */}
+                            <div className="lg:col-span-2 bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                <details className="group">
+                                    <summary className="flex justify-between items-center font-medium cursor-pointer list-none text-blue-800">
+                                        <span className="flex items-center gap-2">
+                                            ℹ️ Come trovare il Variant ID su Lemon Squeezy?
+                                        </span>
+                                        <span className="transition group-open:rotate-180">
+                                            <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                                        </span>
+                                    </summary>
+                                    <div className="text-sm text-blue-700 mt-3 space-y-2 pl-4 border-l-2 border-blue-200">
+                                        <p>1. Vai nella Dashboard Lemon Squeezy {'>'} <b>Store</b> {'>'} <b>Products</b>.</p>
+                                        <p>2. Clicca sul prodotto desiderato (es. 'Pro Monthly').</p>
+                                        <p>3. Scorri fino alla sezione <b>Variants</b>.</p>
+                                        <p>4. Clicca su <b>Share</b> (o i 3 puntini) accanto alla variante e copia il <b>Checkout Link</b>.</p>
+                                        <p>5. Dall'URL copiato (es. <code>.../buy/123456...</code>), il Variant ID è il numero subito dopo <code>/buy/</code>.</p>
+                                    </div>
+                                </details>
+                            </div>
+
                             {/* General Settings */}
                             <div className="lg:col-span-2 bg-gray-50 p-6 rounded-2xl border border-gray-200">
                                 <label className="block text-sm font-bold text-gray-700 mb-2">Testo Sottotitolo Prezzi (Opzionale)</label>
@@ -338,16 +359,7 @@ const AdminDashboard = () => {
                                                 className="w-full pl-8 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                                         </div>
                                     </div>
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-semibold text-gray-500 mb-1 flex items-center gap-2">
-                                            Variant ID (Lemon Squeezy)
-                                            <span className="group relative">
-                                                <span className="cursor-help text-gray-400 hover:text-gray-600">ⓘ</span>
-                                                <span className="invisible group-hover:visible absolute left-5 bottom-0 w-64 p-2 bg-gray-800 text-white text-xs rounded z-50">
-                                                    Trovi questo ID nell'URL del prodotto su Lemon Squeezy o nelle impostazioni del "Variant". È necessario per il checkout.
-                                                </span>
-                                            </span>
-                                        </label>
+                                        <label className="block text-xs font-semibold text-gray-500 mb-1">Variant ID (Lemon Squeezy)</label>
                                         <input type="text" value={settings.monthly.variant_id} onChange={e => handleSettingChange('monthly', 'variant_id', e.target.value)}
                                             className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm bg-white" placeholder="es. 123456" />
                                     </div>
@@ -431,11 +443,12 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                     </div>
-                )}
+    )
+}
 
-            </main>
-            <Footer />
-        </div>
+            </main >
+    <Footer />
+        </div >
     );
 };
 

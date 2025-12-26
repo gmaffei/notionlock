@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialMode = searchParams.get('mode');
+
+  const [isLogin, setIsLogin] = useState(initialMode === 'register' ? false : true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState('');
-  
+
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -24,7 +28,7 @@ const Auth = () => {
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const { data } = await api.post(endpoint, { email, password });
-      
+
       if (isLogin) {
         // Login: vai direttamente alla dashboard
         login(data.token);
@@ -73,7 +77,7 @@ const Auth = () => {
                 </svg>
                 {registrationSuccess}
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setIsLogin(true);

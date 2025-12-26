@@ -9,7 +9,7 @@ const LemonSqueezyButton = ({ variantId, children, className }) => {
 
     const handleCheckout = async () => {
         if (!token) {
-            navigate('/auth');
+            navigate('/auth?mode=register');
             return;
         }
 

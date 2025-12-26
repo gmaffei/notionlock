@@ -128,7 +128,20 @@ const Homepage = () => {
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-4">{t('homepage.pricing.title')}</h2>
             <p className="text-center text-gray-500 mb-12 max-w-2xl mx-auto">
-              {t('homepage.pricing.subtitle')}
+              {(() => {
+                // Custom Admin Override
+                if (pricing?.subtitle) return pricing.subtitle;
+
+                // Smart Fallback Logic
+                const subEnabled = pricing?.monthly?.enabled || pricing?.yearly?.enabled;
+                const lifeEnabled = pricing?.lifetime?.enabled;
+
+                if (subEnabled && lifeEnabled) return t('homepage.pricing.subtitle_hybrid', "Scegli tra la flessibilità dell'abbonamento o la convenienza del pagamento unico.");
+                if (lifeEnabled && !subEnabled) return t('homepage.pricing.subtitle_lifetime_only', "Nessun abbonamento ricorrente. Paga una volta sola e sblocca tutte le funzionalità Pro per sempre.");
+                if (subEnabled && !lifeEnabled) return t('homepage.pricing.subtitle_sub_only', "Abbonamenti flessibili. Disdici quando vuoi, nessun vincolo.");
+
+                return t('homepage.pricing.subtitle', "Scegli il piano adatto alle tue esigenze.");
+              })()}
             </p>
 
             {/* Billing Toggle - Only show if monthly OR yearly is enabled */}

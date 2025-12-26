@@ -46,10 +46,12 @@ const AdminDashboard = () => {
             // Parse pricing config or use defaults with enabled flags
             const pricingConfig = settingsData.pricing_config || {};
             setSettings({
+                subtitle: '',
                 monthly: { enabled: false, usd: 4.99, eur: 4.99, variant_id: '', ...pricingConfig.monthly },
                 yearly: { enabled: false, usd: 49.00, eur: 49.00, variant_id: '', ...pricingConfig.yearly },
                 lifetime: { enabled: true, usd: 99.00, eur: 99.00, variant_id: '', ...pricingConfig.lifetime },
-                discount: { percent: 0, active: false, ...pricingConfig.discount }
+                discount: { percent: 0, active: false, ...pricingConfig.discount },
+                ...pricingConfig // Ensure other keys are preserved
             });
 
         } catch (err) {
@@ -61,13 +63,22 @@ const AdminDashboard = () => {
     };
 
     const handleSettingChange = (section, field, value) => {
-        setSettings(prev => ({
-            ...prev,
-            [section]: {
-                ...prev[section],
-                [field]: value
-            }
-        }));
+        if (field === null) {
+            // Update root level key directly
+            setSettings(prev => ({
+                ...prev,
+                [section]: value
+            }));
+        } else {
+            // Update nested object
+            setSettings(prev => ({
+                ...prev,
+                [section]: {
+                    ...prev[section],
+                    [field]: value
+                }
+            }));
+        }
     };
 
     const saveSettings = async () => {
@@ -134,8 +145,8 @@ const AdminDashboard = () => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors whitespace-nowrap capitalize ${activeTab === tab
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             {tab === 'overview' && '📊 Panoramica'}
@@ -289,6 +300,19 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            {/* General Settings */}
+                            <div className="lg:col-span-2 bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Testo Sottotitolo Prezzi (Opzionale)</label>
+                                <p className="text-xs text-gray-500 mb-2">Lascia vuoto per usare il testo automatico basato sui piani attivi.</p>
+                                <textarea
+                                    value={settings.subtitle || ''}
+                                    onChange={e => handleSettingChange('subtitle', null, e.target.value)} // Special handling for root level key
+                                    className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 p-3"
+                                    rows="2"
+                                    placeholder="Es: Scegli il piano perfetto per te..."
+                                />
+                            </div>
+
                             {/* Monthly Plan */}
                             <div className={`space-y-6 p-6 rounded-2xl border ${settings.monthly.enabled ? 'border-blue-200 bg-blue-50/50' : 'border-gray-200 bg-gray-50'}`}>
                                 <div className="flex justify-between items-center">

@@ -33,6 +33,20 @@ router.get('/stats', async (req, res) => {
         console.error('Admin stats error:', error);
         res.status(500).json({ error: 'Errore nel recupero delle statistiche' });
     }
-});
+    // Get All Users (with subscription info)
+    router.get('/users', async (req, res) => {
+        const { db } = req;
+        try {
+            const result = await db.query(`
+            SELECT id, email, role, subscription_status, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        `);
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Admin users fetch error:', error);
+            res.status(500).json({ error: 'Errore nel recupero utenti' });
+        }
+    });
 
-module.exports = router;
+    module.exports = router;

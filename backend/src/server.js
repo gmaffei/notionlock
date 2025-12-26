@@ -33,8 +33,30 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 // Middleware
 app.use(helmet());
 app.set('trust proxy', true); // Trust Traefik proxy
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://notionlock.com',
+  'https://www.notionlock.com',
+  'http://localhost:3000'
+].filter(Boolean); // Remove empty values
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+
+    // Optional: Allow custom domains that are verified? 
+    // For now, let's keep it strict to the main dashboard domains + localhost
+    // If we need to support custom domains calling the API via CORS, we'd need to lookup the DB.
+    // However, usually custom domains are handled by the proxy or same-origin if CNAME'd.
+
+    const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+    return callback(new Error(msg), false);
+  },
   credentials: true
 }));
 app.use(express.json({

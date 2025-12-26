@@ -208,7 +208,8 @@ router.get('/view/:slug', async (req, res) => {
 
   } catch (error) {
     console.error('Proxy Route Error:', error);
-    res.status(500).send('Error loading page');
+    console.error('Proxy Route Error:', error);
+    res.status(500).json({ error: 'Error loading page', details: error.message });
   }
 });
 

@@ -4,11 +4,26 @@ const cheerio = require('cheerio');
 async function fetchAndRewriteNotionPage(notionUrl) {
     try {
         // 1. Fetch the raw HTML from Notion
+        // 1. Fetch the raw HTML from Notion
         const response = await axios.get(notionUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1'
+            },
+            maxRedirects: 5,
+            validateStatus: (status) => status < 500 // Resolve even on 4xx to handle gracefully
         });
+
+        if (response.status >= 400) {
+            console.error(`Notion upstream error: ${response.status} for URL ${notionUrl}`);
+            throw new Error(`Notion upstream error: ${response.status}`);
+        }
 
         const html = response.data;
         const $ = cheerio.load(html);

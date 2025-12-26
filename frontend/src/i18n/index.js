@@ -17,8 +17,9 @@ i18n
         translation: itTranslation,
       },
     },
-    fallbackLng: 'it', // Lingua di fallback
-    lng: localStorage.getItem('language') || 'it', // Leggi dalla localStorage
+    fallbackLng: 'en', // Lingua di fallback: Inglese per tutti gli altri
+    supportedLngs: ['en', 'it'],
+    load: 'languageOnly', // Assicura che codici come 'en-US' risolvano a 'en'
     interpolation: {
       escapeValue: false, // React già previene gli XSS
     },

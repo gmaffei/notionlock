@@ -359,6 +359,7 @@ const AdminDashboard = () => {
                                                 className="w-full pl-8 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                                         </div>
                                     </div>
+                                    <div className="col-span-2">
                                         <label className="block text-xs font-semibold text-gray-500 mb-1">Variant ID (Lemon Squeezy)</label>
                                         <input type="text" value={settings.monthly.variant_id} onChange={e => handleSettingChange('monthly', 'variant_id', e.target.value)}
                                             className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono text-sm bg-white" placeholder="es. 123456" />
@@ -443,11 +444,11 @@ const AdminDashboard = () => {
                             </button>
                         </div>
                     </div>
-    )
-}
+                )
+                }
 
             </main >
-    <Footer />
+            <Footer />
         </div >
     );
 };

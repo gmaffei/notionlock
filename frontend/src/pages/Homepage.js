@@ -128,41 +128,46 @@ const Homepage = () => {
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-4">{t('homepage.pricing.title')}</h2>
             <p className="text-center text-gray-500 mb-12 max-w-2xl mx-auto">
-              {currency === 'EUR'
-                ? "Nessun abbonamento ricorrente. Paga una volta sola e sblocca tutte le funzionalità Pro per sempre."
-                : "No recurring subscriptions. Pay once and unlock all Pro features forever."}
+              {t('homepage.pricing.subtitle')}
             </p>
 
-            {/* Billing Toggle */}
-            <div className="flex justify-center mb-12">
-              <div className="bg-white p-1 rounded-full border border-gray-200 shadow-sm inline-flex relative">
-                <button
-                  onClick={() => setBillingCycle('monthly')}
-                  className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'monthly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {t('homepage.pricing.monthly', 'Monthly')}
-                </button>
-                <button
-                  onClick={() => setBillingCycle('yearly')}
-                  className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'yearly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {t('homepage.pricing.yearly', 'Yearly')}
-                  {/* Badge for discount if needed */}
-                  {billingCycle === 'yearly' && (
-                    <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">
-                      -17%
-                    </span>
+            {/* Billing Toggle - Only show if monthly OR yearly is enabled */}
+            {(pricing?.monthly?.enabled || pricing?.yearly?.enabled) && (
+              <div className="flex justify-center mb-12">
+                <div className="bg-white p-1 rounded-full border border-gray-200 shadow-sm inline-flex relative">
+                  {pricing?.monthly?.enabled && (
+                    <button
+                      onClick={() => setBillingCycle('monthly')}
+                      className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'monthly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                      {t('homepage.pricing.toggle_monthly', 'Monthly')}
+                    </button>
                   )}
-                </button>
+                  {pricing?.yearly?.enabled && (
+                    <button
+                      onClick={() => setBillingCycle('yearly')}
+                      className={`px-6 py-2 rounded-full text-sm font-bold transition relative z-10 ${billingCycle === 'yearly' ? 'text-blue-600 bg-blue-50 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                      {t('homepage.pricing.toggle_yearly', 'Yearly')}
+                      {/* Dynamic Discount Badge */
+                        pricing?.monthly?.enabled && billingCycle === 'yearly' && (
+                          <span className="absolute -top-3 -right-3 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">
+                            -{Math.round(((pricing.monthly.usd * 12 - pricing.yearly.usd) / (pricing.monthly.usd * 12)) * 100)}%
+                          </span>
+                        )}
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className={`grid md:grid-cols-${(pricing?.monthly?.variant_id || pricing?.yearly?.variant_id) ? '3' : '2'} gap-8 max-w-6xl mx-auto items-stretch`}>
+            {/* Pricing Grid - Use Flex to center items automatically */}
+            <div className="flex flex-wrap justify-center gap-8 max-w-6xl mx-auto items-stretch">
 
               {/* Free Plan */}
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Free</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">/forever</span></div>
+              <div className="w-full md:w-[350px] bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{t('homepage.pricing.plan_free')}</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-6">€0<span className="text-lg font-normal text-gray-500">{t('homepage.pricing.suffix_forever')}</span></div>
                 <button onClick={() => navigate('/auth')} className="w-full py-3 rounded-lg border-2 border-blue-600 text-blue-600 font-bold hover:bg-blue-50 transition mb-8">
                   {t('homepage.pricing.cta_free')}
                 </button>
@@ -177,15 +182,19 @@ const Homepage = () => {
               </div>
 
               {/* Pro Subscription (Monthly/Yearly) */}
-              {((billingCycle === 'monthly' && pricing?.monthly?.variant_id) || (billingCycle === 'yearly' && pricing?.yearly?.variant_id)) && (
-                <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-blue-600 relative flex flex-col transform md:-translate-y-4">
+              {((billingCycle === 'monthly' && pricing?.monthly?.enabled) || (billingCycle === 'yearly' && pricing?.yearly?.enabled)) && (
+                <div className="w-full md:w-[350px] bg-white p-8 rounded-2xl shadow-lg border-2 border-blue-600 relative flex flex-col transform md:-translate-y-4">
                   <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg">
-                    MOST POPULAR
+                    {t('homepage.pricing.badge_popular')}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Pro {billingCycle === 'monthly' ? 'Monthly' : 'Yearly'}</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {billingCycle === 'monthly' ? t('homepage.pricing.plan_pro_monthly') : t('homepage.pricing.plan_pro_yearly')}
+                  </h3>
                   <div className="text-4xl font-bold text-gray-900 mb-6">
                     {getPrice(billingCycle)}
-                    <span className="text-lg font-normal text-gray-500">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                    <span className="text-lg font-normal text-gray-500">
+                      {billingCycle === 'monthly' ? t('homepage.pricing.suffix_mo') : t('homepage.pricing.suffix_yr')}
+                    </span>
                   </div>
 
                   <div className="mb-8">
@@ -195,7 +204,7 @@ const Homepage = () => {
                     >
                       {t('homepage.pricing.cta_subscribe', 'Subscribe Now')}
                     </LemonSqueezyButton>
-                    <p className="text-xs text-center mt-2 text-gray-400">Cancel anytime</p>
+                    <p className="text-xs text-center mt-2 text-gray-400">{t('homepage.pricing.cancel_anytime')}</p>
                   </div>
 
                   <ul className="space-y-4 flex-1">
@@ -211,11 +220,11 @@ const Homepage = () => {
 
               {/* Pro Lifetime Plan */}
               {pricing?.lifetime?.enabled && (
-                <div className="bg-gradient-to-br from-indigo-900 to-gray-900 p-8 rounded-2xl shadow-sm border border-gray-800 text-white flex flex-col">
-                  <h3 className="text-xl font-bold mb-2">{t('homepage.pricing.lifetime')}</h3>
+                <div className="w-full md:w-[350px] bg-gradient-to-br from-indigo-900 to-gray-900 p-8 rounded-2xl shadow-sm border border-gray-800 text-white flex flex-col">
+                  <h3 className="text-xl font-bold mb-2">{t('homepage.pricing.plan_lifetime')}</h3>
                   <div className="text-4xl font-bold mb-6">
                     {getPrice('lifetime')}
-                    <span className="text-lg font-normal opacity-70 block text-sm mt-1">one-time</span>
+                    <span className="text-lg font-normal opacity-70 block text-sm mt-1">{t('homepage.pricing.suffix_onetime')}</span>
                   </div>
 
                   <div className="mb-8">

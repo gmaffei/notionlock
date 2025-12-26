@@ -299,23 +299,46 @@ const Homepage = () => {
           </div>
         </section>
 
-        {/* Testimonials Section */}
-        <section className="py-20 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <h2 className="text-4xl font-bold text-center mb-16">{t('homepage.testimonials.title')}</h2>
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial1_text')}</p>
-                <p className="font-bold">{t('homepage.testimonials.testimonial1_author')}</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial2_text')}</p>
-                <p className="font-bold">{t('homepage.testimonials.testimonial2_author')}</p>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <p className="text-gray-600 mb-4">{t('homepage.testimonials.testimonial3_text')}</p>
-                <p className="font-bold">{t('homepage.testimonials.testimonial3_author')}</p>
-              </div>
+        {/* Testimonials Section (Auto-Scrolling Carousel) */}
+        <section className="py-24 bg-gray-50 overflow-hidden">
+          <div className="container mx-auto px-4 mb-16">
+            <h2 className="text-4xl font-bold text-center">{t('homepage.testimonials.title')}</h2>
+          </div>
+
+          <div className="relative w-full">
+            {/* Gradient Masks */}
+            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none"></div>
+
+            {/* Scrolling Track */}
+            <div className="flex animate-scroll hover:pause space-x-8 w-max">
+              {[...Array(2)].map((_, setIndex) => (
+                <React.Fragment key={setIndex}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="w-[400px] bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0 flex flex-col">
+                      <div className="flex items-center mb-6">
+                        <img
+                          src={`${process.env.PUBLIC_URL}/avatars/${['alex', 'sarah', 'marco', 'elena', 'david', 'sophia', 'luca', 'emma'][i - 1]}.png`}
+                          alt={t(`homepage.testimonials.testimonial${i}_author`)}
+                          className="w-14 h-14 rounded-full object-cover mr-4 border-2 border-white shadow-sm"
+                        />
+                        <div>
+                          <p className="font-bold text-gray-900">{t(`homepage.testimonials.testimonial${i}_author`)}</p>
+                          <p className="text-sm text-gray-500">{t(`homepage.testimonials.testimonial${i}_role`)}</p>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 italic flex-1">"{t(`homepage.testimonials.testimonial${i}_text`)}"</p>
+
+                      {/* Star Rating decoration */}
+                      <div className="flex text-yellow-400 mt-4">
+                        {[...Array(5)].map((_, star) => (
+                          <svg key={star} className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </React.Fragment>
+              ))}
             </div>
           </div>
         </section>
@@ -325,19 +348,13 @@ const Homepage = () => {
           <div className="container mx-auto px-4">
             <h2 className="text-4xl font-bold text-center mb-16">{t('homepage.faq.title')}</h2>
             <div className="max-w-2xl mx-auto">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-bold mb-2">{t('homepage.faq.question1_title')}</h3>
-                  <p className="text-gray-600">{t('homepage.faq.question1_answer')}</p>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">{t('homepage.faq.question2_title')}</h3>
-                  <p className="text-gray-600">{t('homepage.faq.question2_answer')}</p>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold mb-2">{t('homepage.faq.question3_title')}</h3>
-                  <p className="text-gray-600">{t('homepage.faq.question3_answer')}</p>
-                </div>
+              <div className="space-y-8">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <div key={num}>
+                    <h3 className="text-xl font-bold mb-2">{t(`homepage.faq.question${num}_title`)}</h3>
+                    <p className="text-gray-600">{t(`homepage.faq.question${num}_answer`)}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

@@ -34,11 +34,48 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // or leave them if they are data-uris.
 
         // Inject a base tag so relative links (like /image.png) resolve to https://notion.site
-        // This is the simplest "Cheat" to make assets load without proxying every single image yet.
-        // Ideally we would proxy assets too for full white-labeling, but that's Phase 2.
+        // AND inject no-referrer to bypass hotlink protection on assets
         $('head').prepend('<base href="https://notion.site">');
+        $('head').prepend('<meta name="referrer" content="no-referrer">');
 
-        // 3. Inject generic custom styles to hide Notion header/footer if possible
+        // Remove any CSP meta tags that might block execution in our iframe
+        $('meta[http-equiv="Content-Security-Policy"]').remove();
+        $('meta[http-equiv="X-Content-Security-Policy"]').remove();
+
+        // Rewrite Asset URLs to use our Proxy
+        // We use absolute URL for the proxy endpoint to ensure it resolves correctly inside the iframe
+        // regardless of base tag (although base tag affects relative URLs, so we must resolve them first)
+        const PROXY_ASSET_BASE = process.env.REACT_APP_API_URL + '/p/asset?url=';
+        // Fallback if env var missing in backend context (usually available via dotenv)
+        // or just use relative path if we trust the iframe context (but iframe has base=notion.site)
+        // SAFETY: We MUST use absolute URL because of <base href="https://notion.site">
+        // If we use /api/p/asset, it will try https://notion.site/api/p/asset -> 404.
+
+        // Let's assume we can construct it or hardcode for now if env generic
+        const API_HOST = process.env.API_BASE_URL || 'https://api.notionlock.com';
+
+        const rewriteUrl = (url) => {
+            if (!url) return url;
+            // Resolve relative URLs against notion.site
+            if (url.startsWith('/')) {
+                url = 'https://notion.site' + url;
+            }
+            // Only proxy Notion assets
+            if (url.includes('notion.site') || url.includes('notion.so')) {
+                return `${API_HOST}/api/p/asset?url=${encodeURIComponent(url)}`;
+            }
+            return url;
+        };
+
+        $('script').each((i, el) => {
+            const src = $(el).attr('src');
+            if (src) $(el).attr('src', rewriteUrl(src));
+        });
+
+        $('link[rel="stylesheet"]').each((i, el) => {
+            const href = $(el).attr('href');
+            if (href) $(el).attr('href', rewriteUrl(href));
+        });
         $('head').append(`
       <style>
         .notion-topbar { display: none !important; } /* Hide Notion Header */

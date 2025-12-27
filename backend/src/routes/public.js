@@ -210,6 +210,30 @@ router.get('/view/:slug', async (req, res) => {
     console.error('Proxy Route Error:', error);
     res.status(500).json({ error: 'Error loading page', details: error.message });
   }
+  // NEW: Asset Proxy Endpoint
+  router.get('/asset', async (req, res) => {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('URL required');
+
+    try {
+      const response = await axios.get(url, {
+        responseType: 'stream',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+
+      res.set('Content-Type', response.headers['content-type']);
+      res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+      res.set('Access-Control-Allow-Origin', '*'); // Allow anyone to load this asset
+
+      response.data.pipe(res);
+    } catch (error) {
+      console.error('Asset Proxy Error for:', url, error.message);
+      res.status(500).send('Error loading asset');
+    }
+  });
+
 });
 
 // Get page info (for displaying password form)

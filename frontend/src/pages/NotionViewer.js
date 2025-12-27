@@ -36,7 +36,9 @@ const NotionViewer = ({ predefinedSlug }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load content');
+        // Try to parse error details
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.details || errorData.error || 'Failed to load content');
       }
 
       // Read Branding Header
@@ -46,7 +48,7 @@ const NotionViewer = ({ predefinedSlug }) => {
       const html = await response.text();
       setProxyUrl(html); // storing HTML string
     } catch (err) {
-      setError('Errore nel caricamento del contenuto');
+      setError(err.message || 'Errore nel caricamento del contenuto');
     } finally {
       setLoading(false);
     }

@@ -177,7 +177,6 @@ router.get('/view/:slug', async (req, res) => {
       // If user is PRO/LIFETIME, respect their setting
       const isPro = row.subscription_status && row.subscription_status !== 'free';
       showBranding = isPro ? (row.branding_enabled !== false) : true;
-
     } else {
       pageData = JSON.parse(pageData);
       // For cached pages, we need to decide how to store branding info. 

@@ -76,27 +76,62 @@ async function fetchAndRewriteNotionPage(notionUrl) {
               return originalOpen.call(this, method, newUrl, ...args);
             };
 
-            // Intercept Worker constructor
-            const OriginalWorker = window.Worker;
-            window.Worker = function(scriptURL, options) {
-              let url = scriptURL;
-              if (typeof url !== 'string' && url instanceof URL) {
-                 url = url.toString();
-              }
-              url = rewriteUrl(url, 'asset');
-              return new OriginalWorker(url, options);
-            };
+            // CRITICAL FIX: Disable Workers and OPFS completely
+            // SharedWorker has strict same-origin requirements that cannot be bypassed via proxy
+            // Notion will gracefully fallback to in-memory caching instead of OPFS
+            
+            // Disable Worker by making constructor throw or return undefined
+            if (window.Worker) {
+              window.Worker = class Worker {
+                constructor(scriptURL, options) {
+                  console.warn('[NotionLock] Web Workers disabled for cross-origin compatibility');
+                  // Return a fake worker that doesn't actually work to prevent errors
+                  return {
+                    postMessage: () => {},
+                    terminate: () => {},
+                    addEventListener: () => {},
+                    removeEventListener: () => {}
+                  };
+                }
+              };
+            }
 
-            // Intercept SharedWorker constructor
-            const OriginalSharedWorker = window.SharedWorker;
-            window.SharedWorker = function(scriptURL, options) {
-              let url = scriptURL;
-              if (typeof url !== 'string' && url instanceof URL) {
-                 url = url.toString();
-              }
-              url = rewriteUrl(url, 'asset');
-              return new OriginalSharedWorker(url, options);
-            };
+            // Disable SharedWorker
+            if (window.SharedWorker) {
+              window.SharedWorker = class SharedWorker {
+                constructor(scriptURL, options) {
+                  console.warn('[NotionLock] SharedWorkers disabled for cross-origin compatibility');
+                  // Return a fake shared worker
+                  return {
+                    port: {
+                      postMessage: () => {},
+                      start: () => {},
+                      close: () => {},
+                      addEventListener: () => {},
+                      removeEventListener: () => {}
+                    }
+                  };
+                }
+              };
+            }
+
+            // Disable OPFS (Origin Private File System) entirely
+            // This forces Notion to skip the OPFS cache layer
+            if (navigator.storage && navigator.storage.getDirectory) {
+              navigator.storage.getDirectory = undefined;
+            }
+            
+            // Also block StorageManager methods related to OPFS
+            if (navigator.storage) {
+              const originalStorageEstimate = navigator.storage.estimate;
+              navigator.storage.estimate = function() {
+                // Return a safe estimate without OPFS support
+                return Promise.resolve({
+                  usage: 0,
+                  quota: 0
+                });
+              };
+            }
         </script>
         `);
 

@@ -216,28 +216,63 @@ router.get('/view/:slug', async (req, res) => {
 // NEW: Asset Proxy Endpoint (Moved out of view/:slug scope)
 router.get('/asset', async (req, res) => {
   const { url } = req.query;
+  const { redis } = req;
+
   if (!url) return res.status(400).send('URL required');
 
+  // Common headers helper
+  const setProxyHeaders = (res, contentType) => {
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+    res.set('Access-Control-Allow-Origin', '*');
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+  };
+
   try {
+    const cacheKey = `asset:${url}`;
+    const cacheTypeKey = `asset:${url}:type`;
+
+    // 1. Try to get from Cache
+    // We use getBuffer for binary data
+    const [cachedData, cachedType] = await Promise.all([
+      redis.getBuffer(cacheKey),
+      redis.get(cacheTypeKey)
+    ]);
+
+    if (cachedData && cachedType) {
+      setProxyHeaders(res, cachedType);
+      return res.send(cachedData);
+    }
+
+    // 2. Fetch from Source if not cached
     const response = await axios.get(url, {
-      responseType: 'stream',
+      responseType: 'arraybuffer', // Important for images/fonts
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
 
-    res.set('Content-Type', response.headers['content-type']);
-    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
-    res.set('Access-Control-Allow-Origin', '*'); // Allow anyone to load this asset
+    const contentType = response.headers['content-type'];
 
-    // Disable restrictive headers that might block loading in iframes/scripts
-    res.removeHeader('Cross-Origin-Resource-Policy');
-    res.removeHeader('X-Frame-Options');
-    res.removeHeader('Content-Security-Policy');
+    // 3. Save to Cache (24 hours)
+    // Pipeline to set both keys atomically-ish
+    const pipeline = redis.pipeline();
+    pipeline.setex(cacheKey, 86400, response.data);
+    pipeline.setex(cacheTypeKey, 86400, contentType);
+    await pipeline.exec();
 
-    response.data.pipe(res);
+    // 4. Serve
+    setProxyHeaders(res, contentType);
+    res.send(response.data);
+
   } catch (error) {
     console.error('Asset Proxy Error for:', url, error.message);
+    if (error.response && error.response.status === 429) {
+      console.error('Rate Limit Hit on Notion API!');
+    }
+    // Attempt to serve something or just error
     res.status(500).send('Error loading asset');
   }
 });

@@ -36,6 +36,85 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // OR proxy them. For MVP, we'll try to resolve them to absolute Notion URLs where possible
         // or leave them if they are data-uris.
 
+        // CRITICAL: Inject Worker/OPFS Disabler FIRST - before any other script
+        // This MUST run before Notion's scripts load to prevent SharedWorker creation
+        const disablerScript = `
+        <script>
+            (function() {
+                'use strict';
+                console.log("[NotionLock] Initializing worker/OPFS disabler");
+                
+                // Disable Worker completely - return a non-functional stub
+                try {
+                    Object.defineProperty(window, 'Worker', {
+                        value: class Worker {
+                            constructor(scriptURL, options) {
+                                console.warn('[NotionLock] Worker blocked:', scriptURL);
+                                // Don't return 'this' - return a new stub object
+                                const stub = {
+                                    postMessage: function() {},
+                                    terminate: function() {},
+                                    addEventListener: function() {},
+                                    removeEventListener: function() {},
+                                    onerror: null,
+                                    onmessage: null,
+                                    onmessageerror: null
+                                };
+                                return stub;
+                            }
+                        },
+                        writable: false,
+                        configurable: false
+                    });
+                } catch (e) {
+                    console.error('[NotionLock] Failed to disable Worker:', e);
+                }
+
+                // Disable SharedWorker completely
+                try {
+                    Object.defineProperty(window, 'SharedWorker', {
+                        value: class SharedWorker {
+                            constructor(scriptURL, options) {
+                                console.warn('[NotionLock] SharedWorker blocked:', scriptURL);
+                                const stub = {
+                                    port: {
+                                        postMessage: function() {},
+                                        start: function() {},
+                                        close: function() {},
+                                        addEventListener: function() {},
+                                        removeEventListener: function() {},
+                                        onmessage: null,
+                                        onmessageerror: null
+                                    },
+                                    onerror: null
+                                };
+                                return stub;
+                            }
+                        },
+                        writable: false,
+                        configurable: false
+                    });
+                } catch (e) {
+                    console.error('[NotionLock] Failed to disable SharedWorker:', e);
+                }
+
+                // Disable OPFS (Origin Private File System)
+                try {
+                    if (navigator.storage && navigator.storage.getDirectory) {
+                        delete navigator.storage.getDirectory;
+                    }
+                } catch (e) {
+                    console.error('[NotionLock] Failed to disable OPFS:', e);
+                }
+
+                console.log("[NotionLock] Worker/OPFS disabler initialized successfully");
+            })();
+        </script>
+        `;
+
+        // Insert at the VERY BEGINNING of <head>
+        $('head').prepend(disablerScript);
+
         // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
         $('head').prepend(`
         <script>
@@ -75,63 +154,6 @@ async function fetchAndRewriteNotionPage(notionUrl) {
               const newUrl = rewriteUrl(url, 'api');
               return originalOpen.call(this, method, newUrl, ...args);
             };
-
-            // CRITICAL FIX: Disable Workers and OPFS completely
-            // SharedWorker has strict same-origin requirements that cannot be bypassed via proxy
-            // Notion will gracefully fallback to in-memory caching instead of OPFS
-            
-            // Disable Worker by making constructor throw or return undefined
-            if (window.Worker) {
-              window.Worker = class Worker {
-                constructor(scriptURL, options) {
-                  console.warn('[NotionLock] Web Workers disabled for cross-origin compatibility');
-                  // Return a fake worker that doesn't actually work to prevent errors
-                  return {
-                    postMessage: () => {},
-                    terminate: () => {},
-                    addEventListener: () => {},
-                    removeEventListener: () => {}
-                  };
-                }
-              };
-            }
-
-            // Disable SharedWorker
-            if (window.SharedWorker) {
-              window.SharedWorker = class SharedWorker {
-                constructor(scriptURL, options) {
-                  console.warn('[NotionLock] SharedWorkers disabled for cross-origin compatibility');
-                  // Return a fake shared worker
-                  return {
-                    port: {
-                      postMessage: () => {},
-                      start: () => {},
-                      close: () => {},
-                      addEventListener: () => {},
-                      removeEventListener: () => {}
-                    }
-                  };
-                }
-              };
-            }
-
-            // Disable OPFS (Origin Private File System) entirely
-            // This forces Notion to skip the OPFS cache layer
-            if (navigator.storage && navigator.storage.getDirectory) {
-              navigator.storage.getDirectory = undefined;
-            }
-            
-            // Also block StorageManager methods related to OPFS
-            if (navigator.storage) {
-              const originalStorageEstimate = navigator.storage.estimate;
-              navigator.storage.estimate = function() {
-                // Return a safe estimate without OPFS support
-                return Promise.resolve({
-                  usage: 0,
-                  quota: 0
-                });
-              };
-            }
         </script>
         `);
 

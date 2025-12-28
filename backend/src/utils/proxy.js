@@ -33,6 +33,53 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // OR proxy them. For MVP, we'll try to resolve them to absolute Notion URLs where possible
         // or leave them if they are data-uris.
 
+        // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
+        $('head').prepend(`
+        <script>
+          (function() {
+            console.log("NotionLock Proxy Interceptor Loaded");
+            const PROXY_ENDPOINT = window.location.origin + "/api/p/cors-proxy?url=";
+
+            function rewriteUrl(url) {
+              if (typeof url !== 'string') return url;
+              
+              // Handle relative URLs manually since we might intercept before browser resolves against <base>
+              if (url.startsWith("/")) {
+                url = "https://www.notion.so" + url;
+              }
+              
+              // Proxy Notion API calls
+              if (url.includes("notion.so") || url.includes("notion.site")) {
+                return PROXY_ENDPOINT + encodeURIComponent(url);
+              }
+              return url;
+            }
+
+            const originalFetch = window.fetch;
+            window.fetch = function(input, init) {
+              let url = input;
+              if (typeof input === "string") {
+                url = rewriteUrl(input);
+              } else if (input instanceof Request) {
+                 // For Request objects, we create a new Request with proxied URL
+                 // This is basic and might miss some properties but suffices for URL rewrite
+                 url = rewriteUrl(input.url);
+                 // If we need to preserve body/headers from input Request, it's complex.
+                 // Notion's client mostly passes string URL + init object.
+                 // We will assume string input for safety or return original if complex.
+              }
+              return originalFetch(url, init);
+            };
+
+            const originalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url, ...args) {
+              const newUrl = rewriteUrl(url);
+              return originalOpen.call(this, method, newUrl, ...args);
+            };
+          })();
+        </script>
+        `);
+
         // Inject a base tag so relative links (like /image.png) resolve to https://www.notion.so
         // AND inject no-referrer to bypass hotlink protection on assets
         $('head').prepend('<base href="https://www.notion.so">');

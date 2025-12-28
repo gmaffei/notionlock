@@ -2,6 +2,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 async function fetchAndRewriteNotionPage(notionUrl) {
+    // Define API_HOST early to prevent ReferenceError in template literals below
+    const API_HOST = process.env.API_BASE_URL || 'https://api.notionlock.com';
+
     try {
         // 1. Fetch the raw HTML from Notion
         // 1. Fetch the raw HTML from Notion
@@ -99,7 +102,7 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // If we use /api/p/asset, it will try https://notion.site/api/p/asset -> 404.
 
         // Let's assume we can construct it or hardcode for now if env generic
-        const API_HOST = process.env.API_BASE_URL || 'https://api.notionlock.com';
+        // Let's assume we can construct it or hardcode for now if env generic
 
         const rewriteUrl = (url) => {
             if (!url) return url;

@@ -225,6 +225,7 @@ router.get('/asset', async (req, res) => {
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
     res.set('Access-Control-Allow-Origin', '*');
+    res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('Cross-Origin-Resource-Policy');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');

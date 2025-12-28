@@ -106,6 +106,7 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
     if (contentType) res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
+    res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('Cross-Origin-Resource-Policy');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
@@ -188,6 +189,7 @@ app.use('/api/p/cors-proxy', async (req, res) => {
 
     // Set permissive CORS headers for OUR response to the browser
     res.set('Access-Control-Allow-Origin', '*');
+    res.removeHeader('Access-Control-Allow-Credentials');
     res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.set('Access-Control-Allow-Headers', '*');
 

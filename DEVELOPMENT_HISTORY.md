@@ -310,3 +310,25 @@ docker compose -f docker/docker-compose.yml ps
 ---
 
 **🎉 Eccellente lavoro di squadra! Il progetto NotionLock è tecnicamente solido, business-ready e pronto per crescere! 🚀**
+
+### **📅 Session 9 (28/12/2025): Debugging Login & Deployment Fixes**
+**Problema**: Errore 500 "Internal Server Error" durante il login.
+
+**Analisi & Soluzione**:
+1. **Schema Database non allineato**:
+   - Mancavano colonne chiave introdotte di recente (`role`, `subscription_status`, `branding_enabled`) e intere tabelle (`app_settings`, `custom_domains`).
+   - **Fix**: Eseguite migrazioni manuali (`migrate-admin.js`, `migrate-branding.js`, etc.) sulla VPS.
+
+2. **Errori Migrazione da remoto**:
+   - Gli script fallivano con errore SSL perché cercavano di usare SSL all'interno della rete Docker privata.
+   - **Fix**: Aggiornati tutti gli script `migrate-*.js` impostando `ssl: false`.
+
+3. **Backend Credential Mismatch**:
+   - Il container backend usava credenziali placeholder (`S3curePostgresPwd987`) invece di quelle reali del `.env` su VPS.
+   - **Fix**: Forzato `docker compose --env-file .env up -d --force-recreate backend`.
+
+**Modifiche Infrastrutturali**:
+- Aggiornato `.github/workflows/deploy.yml` per eseguire automaticamente le migrazioni (admin, branding, settings, domains) ad ogni deploy.
+- Aggiornato `init-db.sql` per includere lo schema completo per nuove installazioni.
+
+**Risultato**: ✅ Login funzionante, database allineato, deploy reso più robusto.

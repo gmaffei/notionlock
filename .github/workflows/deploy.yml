@@ -139,9 +139,15 @@ jobs:
           echo "🔄 Running Database Migrations (Admin Role)..."
           docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-admin.js || echo "⚠️ Migration warning (check logs)"
           
-          # Run Branding & Subscription Migration
-          echo "🔄 Running Branding & Subscription Migrations..."
           docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-branding.js || echo "⚠️ Branding Migration warning (check logs)"
+
+          # Run Settings Migration
+          echo "🔄 Running Settings Migrations..."
+          docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-settings.js || echo "⚠️ Settings Migration warning (check logs)"
+
+          # Run Domains Migration
+          echo "🔄 Running Custom Domains Migrations..."
+          docker compose -f docker/docker-compose.yml exec -T backend node scripts/migrate-domains.js || echo "⚠️ Domains Migration warning (check logs)"
 
           # Clean up old images
           echo "🧹 Final cleanup..."

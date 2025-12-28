@@ -69,12 +69,18 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         $('script').each((i, el) => {
             const src = $(el).attr('src');
-            if (src) $(el).attr('src', rewriteUrl(src));
+            if (src) {
+                $(el).attr('src', rewriteUrl(src));
+                $(el).removeAttr('integrity'); // Remove SRI hash to prevent blocking
+            }
         });
 
         $('link[rel="stylesheet"]').each((i, el) => {
             const href = $(el).attr('href');
-            if (href) $(el).attr('href', rewriteUrl(href));
+            if (href) {
+                $(el).attr('href', rewriteUrl(href));
+                $(el).removeAttr('integrity'); // Remove SRI hash to prevent blocking
+            }
         });
         $('head').append(`
       <style>

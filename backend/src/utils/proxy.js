@@ -86,7 +86,6 @@ async function fetchAndRewriteNotionPage(notionUrl) {
               url = rewriteUrl(url, 'asset');
               return new OriginalWorker(url, options);
             };
-          })();
         </script>
         `);
 

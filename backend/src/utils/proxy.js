@@ -31,8 +31,16 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         let html = response.data;
 
         // FINAL SOLUTION: Inject worker blocking as ABSOLUTE FIRST BYTES before even DOCTYPE
-        // This guarantees execution before ANY Notion code
-        const blocker = `<script>window.SharedWorker=window.Worker=function(){throw new Error("Workers disabled")};delete navigator.storage?.getDirectory;</script>`;
+        // Use Object.defineProperty to make it IMPOSSIBLE to override
+        const blocker = `<script>
+(function(){
+try{
+Object.defineProperty(window,'SharedWorker',{value:function(){throw new Error("Workers disabled")},writable:false,configurable:false});
+Object.defineProperty(window,'Worker',{value:function(){throw new Error("Workers disabled")},writable:false,configurable:false});
+if(navigator.storage?.getDirectory)delete navigator.storage.getDirectory;
+}catch(e){console.error("Blocker failed:",e)}
+})();
+</script>`;
 
         // Prepend to ENTIRE HTML - this will be the very first thing the browser sees
         html = blocker + html;

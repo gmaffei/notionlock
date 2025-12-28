@@ -38,7 +38,7 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         <script>
           (function() {
             console.log("NotionLock Proxy Interceptor Loaded");
-            const PROXY_ENDPOINT = window.location.origin + "/api/p/cors-proxy?url=";
+            const PROXY_ENDPOINT = "${API_HOST}/api/p/cors-proxy?url=";
 
             function rewriteUrl(url) {
               if (typeof url !== 'string') return url;

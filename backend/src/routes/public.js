@@ -205,6 +205,10 @@ router.get('/view/:slug', async (req, res) => {
     // These headers enable SharedWorker and OPFS to work across origins
     // This is how NotionHero and other production services solve the worker issue
 
+    // ALTERNATIVE APPROACH: Disable features that OPFS requires via Permissions Policy
+    // This forces Notion to skip OPFS/Worker initialization entirely
+    res.setHeader('Permissions-Policy', 'shared-array-buffer=()');
+
     // Enable cross-origin isolation - required for SharedWorker/OPFS
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');

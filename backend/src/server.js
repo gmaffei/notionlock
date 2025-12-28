@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Pool } = require('pg');
 const Redis = require('ioredis');
+const axios = require('axios'); // Added for proxying
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -93,6 +94,69 @@ app.use((req, res, next) => {
 });
 
 // Routes - order matters! Specific routes first, then general
+// NEW: Catch-all proxy for Notion assets (Next.js chunks, images, etc.)
+// These requests come from the proxied page relative links like /_next/...
+app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
+  const url = `https://notion.site${req.originalUrl}`;
+  const { redis } = req;
+
+  // Common proxy headers helper
+  const setProxyHeaders = (res, contentType) => {
+    if (contentType) res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+  };
+
+  try {
+    const cacheKey = `asset:${url}`;
+    const cacheTypeKey = `asset:${url}:type`;
+
+    // 1. Try Cache
+    const [cachedData, cachedType] = await Promise.all([
+      redis.getBuffer(cacheKey),
+      redis.get(cacheTypeKey)
+    ]);
+
+    if (cachedData && cachedType) {
+      setProxyHeaders(res, cachedType);
+      return res.send(cachedData);
+    }
+
+    // 2. Fetch from Notion
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      validateStatus: (status) => status < 500 // Accept 404s from Notion to handle them
+    });
+
+    if (response.status >= 400) {
+      // If Notion returns 404, we return 404
+      return res.status(response.status).send('Not Found on Notion');
+    }
+
+    const contentType = response.headers['content-type'];
+
+    // 3. Cache (24h)
+    const pipeline = redis.pipeline();
+    pipeline.setex(cacheKey, 86400, response.data);
+    pipeline.setex(cacheTypeKey, 86400, contentType);
+    await pipeline.exec();
+
+    // 4. Serve
+    setProxyHeaders(res, contentType);
+    res.send(response.data);
+
+  } catch (error) {
+    console.error('Wildcard Proxy Error:', url, error.message);
+    res.status(500).send('Proxy Error');
+  }
+});
+
 app.use('/api/auth/login', authLimiter, authRoutes); // Rate limit only login
 app.use('/api/auth/register', authLimiter, authRoutes); // Rate limit only register
 app.use('/api/auth/verify-email', authRoutes); // No rate limit on verification

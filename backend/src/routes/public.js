@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const axios = require('axios'); // Added missing import
 const { fetchAndRewriteNotionPage } = require('../utils/proxy');
 
 // Public routes (no auth required)
@@ -210,30 +211,35 @@ router.get('/view/:slug', async (req, res) => {
     console.error('Proxy Route Error:', error);
     res.status(500).json({ error: 'Error loading page', details: error.message });
   }
-  // NEW: Asset Proxy Endpoint
-  router.get('/asset', async (req, res) => {
-    const { url } = req.query;
-    if (!url) return res.status(400).send('URL required');
+});
 
-    try {
-      const response = await axios.get(url, {
-        responseType: 'stream',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      });
+// NEW: Asset Proxy Endpoint (Moved out of view/:slug scope)
+router.get('/asset', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).send('URL required');
 
-      res.set('Content-Type', response.headers['content-type']);
-      res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
-      res.set('Access-Control-Allow-Origin', '*'); // Allow anyone to load this asset
+  try {
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
 
-      response.data.pipe(res);
-    } catch (error) {
-      console.error('Asset Proxy Error for:', url, error.message);
-      res.status(500).send('Error loading asset');
-    }
-  });
+    res.set('Content-Type', response.headers['content-type']);
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+    res.set('Access-Control-Allow-Origin', '*'); // Allow anyone to load this asset
 
+    // Disable restrictive headers that might block loading in iframes/scripts
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Asset Proxy Error for:', url, error.message);
+    res.status(500).send('Error loading asset');
+  }
 });
 
 // Get page info (for displaying password form)

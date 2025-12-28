@@ -246,12 +246,16 @@ router.get('/asset', async (req, res) => {
   const setProxyHeaders = (res, contentType) => {
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
+
+    // CRITICAL: Headers for worker scripts to enable importScripts
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Cross-Origin-Embedder-Policy', 'credentialless');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Service-Worker-Allowed', '/'); // Allow workers from any path
+
     res.removeHeader('Access-Control-Allow-Credentials');
-    res.removeHeader('Cross-Origin-Resource-Policy');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
   };

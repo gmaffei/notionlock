@@ -76,6 +76,7 @@ async function fetchAndRewriteNotionPage(notionUrl) {
               return originalOpen.call(this, method, newUrl, ...args);
             };
 
+            // Intercept Worker constructor
             const OriginalWorker = window.Worker;
             window.Worker = function(scriptURL, options) {
               let url = scriptURL;
@@ -83,13 +84,18 @@ async function fetchAndRewriteNotionPage(notionUrl) {
                  url = url.toString();
               }
               url = rewriteUrl(url, 'asset');
+              return new OriginalWorker(url, options);
+            };
 
-              // Use Blob to bypass Same-Origin Policy for Workers via importScripts
-              const blobContent = 'importScripts("' + url + '");';
-              const blob = new Blob([blobContent], { type: "application/javascript" });
-              const blobUrl = URL.createObjectURL(blob);
-
-              return new OriginalWorker(blobUrl, options);
+            // Intercept SharedWorker constructor
+            const OriginalSharedWorker = window.SharedWorker;
+            window.SharedWorker = function(scriptURL, options) {
+              let url = scriptURL;
+              if (typeof url !== 'string' && url instanceof URL) {
+                 url = url.toString();
+              }
+              url = rewriteUrl(url, 'asset');
+              return new OriginalSharedWorker(url, options);
             };
         </script>
         `);

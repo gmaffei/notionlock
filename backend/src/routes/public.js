@@ -225,6 +225,9 @@ router.get('/asset', async (req, res) => {
     res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24h
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Service-Worker-Allowed', '/'); // Allow workers from any path
     res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('Cross-Origin-Resource-Policy');
     res.removeHeader('X-Frame-Options');
@@ -276,6 +279,102 @@ router.get('/asset', async (req, res) => {
     // Attempt to serve something or just error
     res.status(500).send('Error loading asset');
   }
+});
+
+// NEW: CORS Proxy Endpoint for API calls (fetch/XHR)
+router.get('/cors-proxy', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) return res.status(400).send('URL required');
+
+  try {
+    const response = await axios({
+      method: 'get',
+      url: url,
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    });
+
+    // Forward the content type from the original response
+    const contentType = response.headers['content-type'] || 'application/json';
+
+    // Set CORS headers
+    res.set('Content-Type', contentType);
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.removeHeader('Access-Control-Allow-Credentials');
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+
+    res.send(response.data);
+
+  } catch (error) {
+    console.error('CORS Proxy Error for:', url, error.message);
+    res.status(error.response?.status || 500).send(error.response?.data || 'Error proxying request');
+  }
+});
+
+// CORS Proxy POST endpoint
+router.post('/cors-proxy', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) return res.status(400).send('URL required');
+
+  try {
+    const response = await axios({
+      method: 'post',
+      url: url,
+      data: req.body,
+      responseType: 'arraybuffer',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Content-Type': req.headers['content-type'] || 'application/json'
+      }
+    });
+
+    // Forward the content type from the original response
+    const contentType = response.headers['content-type'] || 'application/json';
+
+    // Set CORS headers
+    res.set('Content-Type', contentType);
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.removeHeader('Access-Control-Allow-Credentials');
+    res.removeHeader('Cross-Origin-Resource-Policy');
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+
+    res.send(response.data);
+
+  } catch (error) {
+    console.error('CORS Proxy POST Error for:', url, error.message);
+    res.status(error.response?.status || 500).send(error.response?.data || 'Error proxying request');
+  }
+});
+
+// Handle OPTIONS preflight for CORS proxy
+router.options('/cors-proxy', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(204);
+});
+
+// Handle OPTIONS preflight for asset endpoint
+router.options('/asset', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(204);
 });
 
 // Get page info (for displaying password form)

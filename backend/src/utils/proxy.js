@@ -39,21 +39,22 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
         $('head').prepend(`
         <script>
-          (function() {
             console.log("NotionLock Proxy Interceptor Loaded");
             const PROXY_ENDPOINT = "${API_HOST}/api/p/cors-proxy?url=";
+            const ASSET_ENDPOINT = "${API_HOST}/api/p/asset?url=";
 
-            function rewriteUrl(url) {
+            function rewriteUrl(url, type = 'api') {
               if (typeof url !== 'string') return url;
               
-              // Handle relative URLs manually since we might intercept before browser resolves against <base>
+              // Handle relative URLs manually
               if (url.startsWith("/")) {
                 url = "https://www.notion.so" + url;
               }
               
-              // Proxy Notion API calls
+              // Proxy Notion calls
               if (url.includes("notion.so") || url.includes("notion.site")) {
-                return PROXY_ENDPOINT + encodeURIComponent(url);
+                const endpoint = type === 'asset' ? ASSET_ENDPOINT : PROXY_ENDPOINT;
+                return endpoint + encodeURIComponent(url);
               }
               return url;
             }
@@ -62,22 +63,28 @@ async function fetchAndRewriteNotionPage(notionUrl) {
             window.fetch = function(input, init) {
               let url = input;
               if (typeof input === "string") {
-                url = rewriteUrl(input);
+                url = rewriteUrl(input, 'api');
               } else if (input instanceof Request) {
-                 // For Request objects, we create a new Request with proxied URL
-                 // This is basic and might miss some properties but suffices for URL rewrite
-                 url = rewriteUrl(input.url);
-                 // If we need to preserve body/headers from input Request, it's complex.
-                 // Notion's client mostly passes string URL + init object.
-                 // We will assume string input for safety or return original if complex.
+                 url = rewriteUrl(input.url, 'api');
               }
               return originalFetch(url, init);
             };
 
             const originalOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url, ...args) {
-              const newUrl = rewriteUrl(url);
+              const newUrl = rewriteUrl(url, 'api');
               return originalOpen.call(this, method, newUrl, ...args);
+            };
+
+            const OriginalWorker = window.Worker;
+            window.Worker = function(scriptURL, options) {
+              let url = scriptURL;
+              // Workers are assets, use asset proxy
+              if (typeof url !== 'string' && url instanceof URL) {
+                 url = url.toString();
+              }
+              url = rewriteUrl(url, 'asset');
+              return new OriginalWorker(url, options);
             };
           })();
         </script>

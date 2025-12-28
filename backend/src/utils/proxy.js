@@ -30,11 +30,14 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         let html = response.data;
 
-        // SOLUTION: Instead of blocking workers, we'll set proper CORS headers
-        // to allow cross-origin workers. This is done in the response headers below.
-        // No need to inject blocking scripts - that approach doesn't work reliably.
+        // FINAL SOLUTION: Inject worker blocking as ABSOLUTE FIRST BYTES before even DOCTYPE
+        // This guarantees execution before ANY Notion code
+        const blocker = `<script>window.SharedWorker=window.Worker=function(){throw new Error("Workers disabled")};delete navigator.storage?.getDirectory;</script>`;
 
-        // NOW parse with Cheerio
+        // Prepend to ENTIRE HTML - this will be the very first thing the browser sees
+        html = blocker + html;
+
+        // NOW parse with Cheerio  
         const $ = cheerio.load(html);
 
         // 2. Rewrite base to ensure relative links work (or remove it to handle manually)

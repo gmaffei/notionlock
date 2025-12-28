@@ -31,7 +31,10 @@ const db = new Pool({
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 app.set('trust proxy', true); // Trust Traefik proxy
 const allowedOrigins = [
   process.env.FRONTEND_URL,

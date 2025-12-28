@@ -201,6 +201,24 @@ router.get('/view/:slug', async (req, res) => {
     // 3. Fetch and Serve Proxied Content
     const proxiedHtml = await fetchAndRewriteNotionPage(pageData.notionUrl || pageData.notion_url);
 
+    // CRITICAL HEADERS FOR CROSS-ORIGIN WORKERS
+    // These headers enable SharedWorker and OPFS to work across origins
+    // This is how NotionHero and other production services solve the worker issue
+
+    // Enable cross-origin isolation - required for SharedWorker/OPFS
+    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+
+    // Standard CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Remove restrictive headers that Notion might set
+    res.removeHeader('X-Frame-Options');
+    res.removeHeader('Content-Security-Policy');
+
     // Ensure charset is UTF-8 to prevent encoding issues with special chars
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Show-Branding', showBranding.toString()); // Custom Header for Frontend

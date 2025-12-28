@@ -30,52 +30,9 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         let html = response.data;
 
-        // CRITICAL FIX: Inject worker blocker DIRECTLY into HTML string BEFORE Cheerio parsing
-        // This ensures it's absolutely first and executed before any Notion scripts
-        const workerBlocker = `<script>
-(function(){
-console.log("[NotionLock] Initializing early worker/OPFS blocker");
-try {
-    // Store original constructors
-    const OriginalSharedWorker = window.SharedWorker;
-    const OriginalWorker = window.Worker;
-    
-    // Override SharedWorker - throw error to force Notion's fallback
-    window.SharedWorker = function(url, options) {
-        console.warn('[NotionLock] Blocked SharedWorker:', url);
-        throw new DOMException('SharedWorker not available in cross-origin context', 'NotSupportedError');
-    };
-    
-    // Override Worker - throw error to force Notion's fallback
-    window.Worker = function(url, options) {
-        console.warn('[NotionLock] Blocked Worker:', url);
-        throw new DOMException('Worker not available in cross-origin context', 'NotSupportedError');
-    };
-    
-    // Remove OPFS APIs
-    if (navigator.storage && navigator.storage.getDirectory) {
-        delete navigator.storage.getDirectory;
-    }
-    if (window.FileSystemSyncAccessHandle) {
-        delete window.FileSystemSyncAccessHandle;
-    }
-    
-    console.log("[NotionLock] Worker/OPFS blocker active");
-} catch (e) {
-    console.error("[NotionLock] Blocker failed:", e);
-}
-})();
-</script>`;
-
-        // Inject RIGHT AFTER <head> tag or at the beginning of <html>
-        if (html.includes('<head>')) {
-            html = html.replace('<head>', '<head>' + workerBlocker);
-        } else if (html.includes('<html>')) {
-            html = html.replace('<html>', '<html><head>' + workerBlocker + '</head>');
-        } else {
-            // If no head or html tag, prepend to entire content
-            html = workerBlocker + html;
-        }
+        // SOLUTION: Instead of blocking workers, we'll set proper CORS headers
+        // to allow cross-origin workers. This is done in the response headers below.
+        // No need to inject blocking scripts - that approach doesn't work reliably.
 
         // NOW parse with Cheerio
         const $ = cheerio.load(html);

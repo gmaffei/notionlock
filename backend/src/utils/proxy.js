@@ -28,7 +28,56 @@ async function fetchAndRewriteNotionPage(notionUrl) {
             throw new Error(`Notion upstream error: ${response.status}`);
         }
 
-        const html = response.data;
+        let html = response.data;
+
+        // CRITICAL FIX: Inject worker blocker DIRECTLY into HTML string BEFORE Cheerio parsing
+        // This ensures it's absolutely first and executed before any Notion scripts
+        const workerBlocker = `<script>
+(function(){
+console.log("[NotionLock] Initializing early worker/OPFS blocker");
+try {
+    // Store original constructors
+    const OriginalSharedWorker = window.SharedWorker;
+    const OriginalWorker = window.Worker;
+    
+    // Override SharedWorker - throw error to force Notion's fallback
+    window.SharedWorker = function(url, options) {
+        console.warn('[NotionLock] Blocked SharedWorker:', url);
+        throw new DOMException('SharedWorker not available in cross-origin context', 'NotSupportedError');
+    };
+    
+    // Override Worker - throw error to force Notion's fallback
+    window.Worker = function(url, options) {
+        console.warn('[NotionLock] Blocked Worker:', url);
+        throw new DOMException('Worker not available in cross-origin context', 'NotSupportedError');
+    };
+    
+    // Remove OPFS APIs
+    if (navigator.storage && navigator.storage.getDirectory) {
+        delete navigator.storage.getDirectory;
+    }
+    if (window.FileSystemSyncAccessHandle) {
+        delete window.FileSystemSyncAccessHandle;
+    }
+    
+    console.log("[NotionLock] Worker/OPFS blocker active");
+} catch (e) {
+    console.error("[NotionLock] Blocker failed:", e);
+}
+})();
+</script>`;
+
+        // Inject RIGHT AFTER <head> tag or at the beginning of <html>
+        if (html.includes('<head>')) {
+            html = html.replace('<head>', '<head>' + workerBlocker);
+        } else if (html.includes('<html>')) {
+            html = html.replace('<html>', '<html><head>' + workerBlocker + '</head>');
+        } else {
+            // If no head or html tag, prepend to entire content
+            html = workerBlocker + html;
+        }
+
+        // NOW parse with Cheerio
         const $ = cheerio.load(html);
 
         // 2. Rewrite base to ensure relative links work (or remove it to handle manually)
@@ -36,64 +85,8 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // OR proxy them. For MVP, we'll try to resolve them to absolute Notion URLs where possible
         // or leave them if they are data-uris.
 
-        // CRITICAL: Inject Worker/OPFS Disabler FIRST - before any other script
-        // This MUST run before Notion's scripts load to prevent SharedWorker creation
-        const disablerScript = `<script>
-(function() {
-    'use strict';
-    console.log("[NotionLock] 🔒 Blocking Workers/OPFS for cross-origin compatibility");
-    
-    // Strategy: Make browsers think these APIs don't exist by throwing errors
-    // AND removing feature detection flags
-    
-    // Block SharedWorker - THROW ERROR instead of returning stub
-    const OriginalSharedWorker = window.SharedWorker;
-    window.SharedWorker = function(scriptURL, options) {
-        console.warn('[NotionLock] ❌ SharedWorker blocked:', scriptURL);
-        // Throw an error - this forces Notion to catch and use fallback
-        throw new Error('SharedWorker is not supported in this context (NotionLock cross-origin protection)');
-    };
-    // Make it look like SharedWorker doesn't exist
-    window.SharedWorker.toString = function() { return 'function SharedWorker() { [native code] }'; };
-    
-    // Block Worker - THROW ERROR
-    const OriginalWorker = window.Worker;
-    window.Worker = function(scriptURL, options) {
-        console.warn('[NotionLock] ❌ Worker blocked:', scriptURL);
-        throw new Error('Worker is not supported in this context (NotionLock cross-origin protection)');
-    };
-    window.Worker.toString = function() { return 'function Worker() { [native code] }'; };
-    
-    // Disable OPFS completely
-    if (navigator.storage) {
-        // Remove getDirectory to make OPFS unavailable
-        if (navigator.storage.getDirectory) {
-            delete navigator.storage.getDirectory;
-        }
-        // Override estimate to report 0 quota
-        const originalEstimate = navigator.storage.estimate;
-        navigator.storage.estimate = async function() {
-            return { usage: 0, quota: 0, usageDetails: {} };
-        };
-    }
-    
-    // Block FileSystemSyncAccessHandle (used by OPFS)
-    if (window.FileSystemSyncAccessHandle) {
-        delete window.FileSystemSyncAccessHandle;
-    }
-    
-    console.log("[NotionLock] ✅ Worker/OPFS APIs successfully blocked");
-})();
-</script>`;
-
-        // Insert the disabler as THE FIRST THING in head
-        // We need to use a different approach - directly manipulate the HTML string
-        // or ensure prepend order is correct
-        const headContent = $('head').html();
-        $('head').html(disablerScript + (headContent || ''));
-
         // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
-        $('head').prepend(`
+        $('head').append(`
         <script>
             console.log("NotionLock Proxy Interceptor Loaded");
             const PROXY_ENDPOINT = "${API_HOST}/api/p/cors-proxy?url=";

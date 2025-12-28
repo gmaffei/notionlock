@@ -38,82 +38,59 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         // CRITICAL: Inject Worker/OPFS Disabler FIRST - before any other script
         // This MUST run before Notion's scripts load to prevent SharedWorker creation
-        const disablerScript = `
-        <script>
-            (function() {
-                'use strict';
-                console.log("[NotionLock] Initializing worker/OPFS disabler");
-                
-                // Disable Worker completely - return a non-functional stub
-                try {
-                    Object.defineProperty(window, 'Worker', {
-                        value: class Worker {
-                            constructor(scriptURL, options) {
-                                console.warn('[NotionLock] Worker blocked:', scriptURL);
-                                // Don't return 'this' - return a new stub object
-                                const stub = {
-                                    postMessage: function() {},
-                                    terminate: function() {},
-                                    addEventListener: function() {},
-                                    removeEventListener: function() {},
-                                    onerror: null,
-                                    onmessage: null,
-                                    onmessageerror: null
-                                };
-                                return stub;
-                            }
-                        },
-                        writable: false,
-                        configurable: false
-                    });
-                } catch (e) {
-                    console.error('[NotionLock] Failed to disable Worker:', e);
-                }
+        const disablerScript = `<script>
+(function() {
+    'use strict';
+    console.log("[NotionLock] 🔒 Blocking Workers/OPFS for cross-origin compatibility");
+    
+    // Strategy: Make browsers think these APIs don't exist by throwing errors
+    // AND removing feature detection flags
+    
+    // Block SharedWorker - THROW ERROR instead of returning stub
+    const OriginalSharedWorker = window.SharedWorker;
+    window.SharedWorker = function(scriptURL, options) {
+        console.warn('[NotionLock] ❌ SharedWorker blocked:', scriptURL);
+        // Throw an error - this forces Notion to catch and use fallback
+        throw new Error('SharedWorker is not supported in this context (NotionLock cross-origin protection)');
+    };
+    // Make it look like SharedWorker doesn't exist
+    window.SharedWorker.toString = function() { return 'function SharedWorker() { [native code] }'; };
+    
+    // Block Worker - THROW ERROR
+    const OriginalWorker = window.Worker;
+    window.Worker = function(scriptURL, options) {
+        console.warn('[NotionLock] ❌ Worker blocked:', scriptURL);
+        throw new Error('Worker is not supported in this context (NotionLock cross-origin protection)');
+    };
+    window.Worker.toString = function() { return 'function Worker() { [native code] }'; };
+    
+    // Disable OPFS completely
+    if (navigator.storage) {
+        // Remove getDirectory to make OPFS unavailable
+        if (navigator.storage.getDirectory) {
+            delete navigator.storage.getDirectory;
+        }
+        // Override estimate to report 0 quota
+        const originalEstimate = navigator.storage.estimate;
+        navigator.storage.estimate = async function() {
+            return { usage: 0, quota: 0, usageDetails: {} };
+        };
+    }
+    
+    // Block FileSystemSyncAccessHandle (used by OPFS)
+    if (window.FileSystemSyncAccessHandle) {
+        delete window.FileSystemSyncAccessHandle;
+    }
+    
+    console.log("[NotionLock] ✅ Worker/OPFS APIs successfully blocked");
+})();
+</script>`;
 
-                // Disable SharedWorker completely
-                try {
-                    Object.defineProperty(window, 'SharedWorker', {
-                        value: class SharedWorker {
-                            constructor(scriptURL, options) {
-                                console.warn('[NotionLock] SharedWorker blocked:', scriptURL);
-                                const stub = {
-                                    port: {
-                                        postMessage: function() {},
-                                        start: function() {},
-                                        close: function() {},
-                                        addEventListener: function() {},
-                                        removeEventListener: function() {},
-                                        onmessage: null,
-                                        onmessageerror: null
-                                    },
-                                    onerror: null
-                                };
-                                return stub;
-                            }
-                        },
-                        writable: false,
-                        configurable: false
-                    });
-                } catch (e) {
-                    console.error('[NotionLock] Failed to disable SharedWorker:', e);
-                }
-
-                // Disable OPFS (Origin Private File System)
-                try {
-                    if (navigator.storage && navigator.storage.getDirectory) {
-                        delete navigator.storage.getDirectory;
-                    }
-                } catch (e) {
-                    console.error('[NotionLock] Failed to disable OPFS:', e);
-                }
-
-                console.log("[NotionLock] Worker/OPFS disabler initialized successfully");
-            })();
-        </script>
-        `;
-
-        // Insert at the VERY BEGINNING of <head>
-        $('head').prepend(disablerScript);
+        // Insert the disabler as THE FIRST THING in head
+        // We need to use a different approach - directly manipulate the HTML string
+        // or ensure prepend order is correct
+        const headContent = $('head').html();
+        $('head').html(disablerScript + (headContent || ''));
 
         // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
         $('head').prepend(`

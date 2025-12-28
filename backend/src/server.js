@@ -97,7 +97,8 @@ app.use((req, res, next) => {
 // NEW: Catch-all proxy for Notion assets (Next.js chunks, images, etc.)
 // These requests come from the proxied page relative links like /_next/...
 app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
-  const url = `https://notion.site${req.originalUrl}`;
+  // Use www.notion.so to avoid redirects to home/login which notion.site does for assets
+  const url = `https://www.notion.so${req.originalUrl}`;
   const { redis } = req;
 
   // Common proxy headers helper

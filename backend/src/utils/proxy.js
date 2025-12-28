@@ -33,9 +33,9 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // OR proxy them. For MVP, we'll try to resolve them to absolute Notion URLs where possible
         // or leave them if they are data-uris.
 
-        // Inject a base tag so relative links (like /image.png) resolve to https://notion.site
+        // Inject a base tag so relative links (like /image.png) resolve to https://www.notion.so
         // AND inject no-referrer to bypass hotlink protection on assets
-        $('head').prepend('<base href="https://notion.site">');
+        $('head').prepend('<base href="https://www.notion.so">');
         $('head').prepend('<meta name="referrer" content="no-referrer">');
 
         // Remove any CSP meta tags that might block execution in our iframe
@@ -56,13 +56,15 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         const rewriteUrl = (url) => {
             if (!url) return url;
-            // Resolve relative URLs against notion.site
+            // Resolve relative URLs against www.notion.so (where assets live)
             if (url.startsWith('/')) {
-                url = 'https://notion.site' + url;
+                url = 'https://www.notion.so' + url;
             }
             // Only proxy Notion assets
             if (url.includes('notion.site') || url.includes('notion.so')) {
-                return `${API_HOST}/api/p/asset?url=${encodeURIComponent(url)}`;
+                // Ensure we fetch from notion.so to avoid redirects
+                const fetchUrl = url.replace('notion.site', 'www.notion.so');
+                return `${API_HOST}/api/p/asset?url=${encodeURIComponent(fetchUrl)}`;
             }
             return url;
         };

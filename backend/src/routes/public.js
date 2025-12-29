@@ -571,17 +571,32 @@ router.get('/js-proxy', async (req, res) => {
       '(async function(){console.warn("[NotionLock] OPFS blocked");throw new Error("OPFS not available")})&&navigator.storage.getDirectory('
     );
 
+
     await redis.setex(cacheKey, 86400, code);
 
+    // Comprehensive CORS headers for cross-origin script loading
     res.set('Content-Type', 'application/javascript; charset=utf-8');
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', '*');
+    res.set('Access-Control-Expose-Headers', '*');
+    res.set('Timing-Allow-Origin', '*');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.send(code);
 
   } catch (error) {
     console.error('[JS-Proxy] Error:', error.message);
     res.status(500).send('// Error fetching script');
   }
+});
+
+// Handle OPTIONS preflight for js-proxy
+router.options('/js-proxy', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', '*');
+  res.sendStatus(204);
 });
 
 // Secure Iframe Endpoint - Serves Notion page via encrypted token

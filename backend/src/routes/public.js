@@ -704,31 +704,9 @@ router.get('/secure-frame', async (req, res) => {
     // Decrypt Notion URL
     const notionUrl = decrypt(payload.encryptedUrl);
 
-    // Fetch page from Notion (simple fetch, no rewriting needed for iframe)
-    const response = await axios.get(notionUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'text/html'
-      }
-    });
-
-    let html = response.data;
-
-    // Optional: Add watermark
-    if (payload.userId) {
-      const watermark = `
-        <div style="position:fixed;bottom:5px;right:5px;background:rgba(0,0,0,0.05);padding:2px 5px;font-size:9px;color:#999;pointer-events:none;">
-          Protected by NotionLock | ${new Date().toISOString().split('T')[0]}
-        </div>
-      `;
-      html = html.replace('</body>', watermark + '</body>');
-    }
-
-    // Send with security headers
-    res.set('Content-Type', 'text/html; charset=utf-8');
-    res.set('X-Frame-Options', 'SAMEORIGIN');
-    res.set('Content-Security-Policy', "frame-ancestors 'self'");
-    res.send(html);
+    // DIRECT REDIRECT to Notion (no proxying)
+    // This allows Notion to load in its native context, avoiding all worker/OPFS issues
+    res.redirect(302, notionUrl);
 
   } catch (error) {
     console.error('[Secure-Frame] Error:', error.message);

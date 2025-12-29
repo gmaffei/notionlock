@@ -129,13 +129,9 @@ async function fetchAndRewriteNotionPage(notionUrl) {
             return url;
         };
 
-        $('script').each((i, el) => {
-            const src = $(el).attr('src');
-            if (src) {
-                $(el).attr('src', rewriteUrl(src));
-                $(el).removeAttr('integrity'); // Remove SRI hash to prevent blocking
-            }
-        });
+        // NOTE: Scripts are already rewritten to /js-proxy above (lines 36-47)
+        // DO NOT rewrite scripts here or it will overwrite the /js-proxy rewriting!
+        // Scripts need /js-proxy, not /asset, because we need to modify the JavaScript code
 
         $('link[rel="stylesheet"]').each((i, el) => {
             const href = $(el).attr('href');

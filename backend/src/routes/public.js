@@ -143,19 +143,15 @@ router.post('/:slug', async (req, res) => {
 router.get('/view/:slug', async (req, res) => {
   const { slug } = req.params;
   const { redis, db } = req;
-  const authHeader = req.headers.authorization;
 
-  // 1. Verify Token
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).send('Unauthorized'); // Use send instead of json for simple status if prefer
+  // 1. Verify authentication via cookie (iframe compatible)
+  const token = req.cookies[`auth_${slug}`];
+  if (!token) {
+    return res.status(401).send('<h1>Unauthorized</h1><p>Please log in first.</p>');
   }
-  const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.slug !== slug) {
-      return res.status(403).send('Forbidden: Token mismatch');
-    }
+    jwt.verify(token, process.env.JWT_SECRET);
 
     // 2. Get Notion URL and Branding Settings
     let pageData = await redis.get(`page:${slug}`);
@@ -250,6 +246,8 @@ router.get('/view/:slug', async (req, res) => {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Show-Branding', showBranding.toString());
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Allow iframe from same origin (notionlock.com -> api.notionlock.com)
+    res.removeHeader('X-Frame-Options');
     res.send(iframeHtml);
 
   } catch (error) {

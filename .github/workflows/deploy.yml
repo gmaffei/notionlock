@@ -92,9 +92,9 @@ jobs:
           echo "📝 Current commit:"
           git log --oneline -1
           
-          # Build only frontend with maximum force
-          echo "🔨 Building ONLY frontend with --no-cache..."
-          docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend
+          # Build frontend and backend with maximum force
+          echo "🔨 Building frontend and backend with --no-cache..."
+          docker compose -f docker/docker-compose.yml --env-file .env build --no-cache --pull frontend backend
           
           # Start all containers
           echo "🚀 Starting all containers..."

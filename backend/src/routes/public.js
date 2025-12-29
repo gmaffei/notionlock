@@ -199,30 +199,58 @@ router.get('/view/:slug', async (req, res) => {
       }
     }
 
-    // 3. Fetch and Return Notion Content Directly
+    // 3. Serve Iframe with Direct Notion URL
     const notionUrl = pageData.notionUrl || pageData.notion_url;
-    
-    try {
-      // Fetch Notion HTML directly (server-side)
-      const notionResponse = await axios.get(notionUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'en-US,en;q=0.9'
-        },
-        maxRedirects: 5
-      });
 
-      // Return HTML directly for frontend's srcDoc injection
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', showBranding.toString());
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.send(notionResponse.data);
+    // Generate page HTML with iframe pointing to Notion
+    const iframeHtml = `
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>${pageData.title || 'Protected Page'}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; display: block; }
+        .loading {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Loading protected content...</div>
+    <iframe id="notion-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+    <script>
+        (function() {
+            // Obfuscated URL (basic protection from casual inspection)
+            const parts = ['${notionUrl.substring(0, 30)}', '${notionUrl.substring(30)}'];
+            const iframe = document.getElementById('notion-frame');
+            iframe.src = parts.join('');
+            
+            iframe.onload = () => document.querySelector('.loading').style.display = 'none';
+            
+            // Disable right-click
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            
+            // Make iframe src harder to extract
+            Object.defineProperty(HTMLIFrameElement.prototype, 'src', {
+                get: function() { return iframe === this ? 'about:blank' : this.getAttribute('src'); }
+            });
+        })();
+    </script>
+</body>
+</html>`;
 
-    } catch (fetchError) {
-      console.error('[View] Notion fetch error:', fetchError.message);
-      return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
-    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Show-Branding', showBranding.toString());
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(iframeHtml);
 
   } catch (error) {
     console.error('Proxy Route Error:', error);

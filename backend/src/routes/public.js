@@ -704,9 +704,21 @@ router.get('/secure-frame', async (req, res) => {
     // Decrypt Notion URL
     const notionUrl = decrypt(payload.encryptedUrl);
 
-    // DIRECT REDIRECT to Notion (no proxying)
-    // This allows Notion to load in its native context, avoiding all worker/OPFS issues
-    res.redirect(302, notionUrl);
+    // Fetch and serve Notion HTML directly
+    // NOTE: Worker errors will appear in console but page should still function
+    const response = await axios.get(notionUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      maxRedirects: 5
+    });
+
+    // Send HTML as-is (no modifications needed)
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(response.data);
 
   } catch (error) {
     console.error('[Secure-Frame] Error:', error.message);

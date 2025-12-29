@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import AdBanner from '../components/AdBanner';
+import { NotionRenderer } from 'react-notion-x';
+import 'react-notion-x/src/styles.css';
 
 const NotionViewer = ({ predefinedSlug }) => {
   const { slug: paramSlug } = useParams();
   const slug = predefinedSlug || paramSlug;
   const navigate = useNavigate();
-  const [proxyUrl, setProxyUrl] = useState('');
+  const [recordMap, setRecordMap] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [token, setToken] = useState('');
-
-  /* State for Branding */
   const [showBranding, setShowBranding] = useState(true);
 
   useEffect(() => {
-    // Check if user has valid access token
     const accessToken = sessionStorage.getItem(`access_${slug}`);
 
     if (!accessToken) {
@@ -23,24 +20,22 @@ const NotionViewer = ({ predefinedSlug }) => {
       return;
     }
 
-    setToken(accessToken);
-    fetchProxyContent(accessToken);
-  }, [slug, navigate]);
+    fetchNotionContent(accessToken);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 
-  const fetchProxyContent = async (accessToken) => {
+  const fetchNotionContent = async (accessToken) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}?token=${accessToken}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.details || errorData.error || 'Failed to load content');
+        throw new Error(errorData.message || errorData.error || 'Failed to load content');
       }
 
-      const brandingHeader = response.headers.get('X-Show-Branding');
-      setShowBranding(brandingHeader === 'true');
-
-      const html = await response.text();
-      setProxyUrl(html);
+      const data = await response.json();
+      setRecordMap(data.recordMap);
+      setShowBranding(data.showBranding);
     } catch (err) {
       setError(err.message || 'Errore nel caricamento del contenuto');
     } finally {
@@ -59,25 +54,27 @@ const NotionViewer = ({ predefinedSlug }) => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-red-600 bg-gray-50">
-        <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-          <h3 className="text-xl font-bold mb-2">Access Denied</h3>
-          <p>{error}</p>
+        <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+          <h3 className="text-xl font-bold mb-2">Error Loading Page</h3>
+          <p className="mb-4">{error}</p>
+          <p className="text-sm text-gray-600">
+            Make sure the page is public or shared with the NLock integration.
+          </p>
         </div>
       </div>
     );
   }
 
-
   return (
-    <div className="h-screen w-screen overflow-hidden relative bg-gray-100">
-      <iframe
-        title="Notion Content"
-        srcDoc={proxyUrl}
-        className="w-full h-full border-0"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-      />
+    <div className="min-h-screen bg-white">
+      {recordMap && (
+        <NotionRenderer
+          recordMap={recordMap}
+          fullPage={true}
+          darkMode={false}
+        />
+      )}
 
-      {/* Powered By Branding - Only if enabled */}
       {showBranding && (
         <a
           href="https://notionlock.com?utm_source=badge"

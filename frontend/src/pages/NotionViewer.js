@@ -23,36 +23,9 @@ const NotionViewer = ({ predefinedSlug }) => {
       return;
     }
 
-    setToken(accessToken);
-    fetchProxyContent(accessToken);
+    // Token verified, allow iframe to load
+    setLoading(false);
   }, [slug, navigate]);
-
-  const fetchProxyContent = async (accessToken) => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/p/view/${slug}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-
-      if (!response.ok) {
-        // Try to parse error details
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.details || errorData.error || 'Failed to load content');
-      }
-
-      // Read Branding Header
-      const brandingHeader = response.headers.get('X-Show-Branding');
-      setShowBranding(brandingHeader === 'true');
-
-      const html = await response.text();
-      setProxyUrl(html); // storing HTML string
-    } catch (err) {
-      setError(err.message || 'Errore nel caricamento del contenuto');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -76,13 +49,13 @@ const NotionViewer = ({ predefinedSlug }) => {
   return (
     <div className="h-screen w-screen overflow-hidden relative bg-gray-100">
       {/* 
-        Using srcDoc to inject the fetched HTML. 
-      */}
+        Direct iframe to backend endpoint - backend returns iframe HTML
+       */}
       <iframe
         title="Notion Content"
-        srcDoc={proxyUrl}
+        src={`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}`}
         className="w-full h-full border-0"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
       />
 
       {/* Powered By Branding - Only if enabled */}

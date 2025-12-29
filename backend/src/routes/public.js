@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const axios = require('axios'); // Added missing import
 const { fetchAndRewriteNotionPage } = require('../utils/proxy');
+const { encrypt, decrypt, hashIP } = require('../utils/crypto');
 
 // Public routes (no auth required)
 
@@ -198,35 +199,99 @@ router.get('/view/:slug', async (req, res) => {
       }
     }
 
-    // 3. Fetch and Serve Proxied Content
-    const proxiedHtml = await fetchAndRewriteNotionPage(pageData.notionUrl || pageData.notion_url);
+    // 3. Generate Encrypted Token for Secure Iframe
+    const notionUrl = pageData.notionUrl || pageData.notion_url;
 
-    // CRITICAL HEADERS FOR CROSS-ORIGIN WORKERS
-    // These headers enable SharedWorker and OPFS to work across origins
-    // This is how NotionHero and other production services solve the worker issue
+    // Encrypt the Notion URL
+    const encryptedUrl = encrypt(notionUrl);
 
-    // ALTERNATIVE APPROACH: Disable features that OPFS requires via Permissions Policy
-    // This forces Notion to skip OPFS/Worker initialization entirely
-    res.setHeader('Permissions-Policy', 'shared-array-buffer=()');
+    // Generate one-time token
+    const tokenId = crypto.randomBytes(16).toString('hex');
+    const clientIP = req.ip || req.connection.remoteAddress;
 
-    // Enable cross-origin isolation - required for SharedWorker/OPFS
-    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Create JWT with encrypted URL and metadata
+    const token = jwt.sign({
+      encryptedUrl,
+      pageId: pageData.id,
+      userId: pageData.user_id,
+      tokenId,
+      ipHash: hashIP(clientIP),
+      iat: Date.now()
+    }, process.env.JWT_SECRET, { expiresIn: '5m' });
 
-    // Standard CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    // Track token usage (one-time use)
+    await redis.setex(`token:${tokenId}`, 300, 'unused'); // 5 min expiry
 
-    // Remove restrictive headers that Notion might set
-    res.removeHeader('X-Frame-Options');
-    res.removeHeader('Content-Security-Policy');
+    // Serve iframe wrapper instead of proxied HTML
+    const iframeHtml = `
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>${pageData.title || 'Protected Page'}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; }
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            display: block;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Loading protected content...</div>
+    <iframe 
+        id="content-frame"
+        src="/api/p/secure-frame?token=${token}"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock"
+        referrerpolicy="no-referrer"
+        loading="eager">
+    </iframe>
+    <script>
+        // Remove loading message when iframe loads
+        document.getElementById('content-frame').onload = function() {
+            document.querySelector('.loading').style.display = 'none';
+        };
+        
+        // Security: Prevent inspection attempts
+        if (typeof window !== 'undefined') {
+            // Disable right-click (can be bypassed but adds friction)
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            
+            // Detect DevTools (basic check)
+            const devtools = /./;
+            devtools.toString = function() {
+                this.opened = true;
+            };
+            console.log('%c', devtools);
+            
+            // Make it harder to extract iframe src
+            Object.defineProperty(HTMLIFrameElement.prototype, 'src', {
+                get: function() { return 'about:blank'; },
+                set: function(v) { }
+            });
+        }
+    </script>
+</body>
+</html>`;
 
-    // Ensure charset is UTF-8 to prevent encoding issues with special chars
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('X-Show-Branding', showBranding.toString()); // Custom Header for Frontend
-    res.send(proxiedHtml);
+    res.setHeader('X-Show-Branding', showBranding.toString());
+    res.setHeader('X-Frame-Options', 'DENY'); // Prevent embedding our page
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+    res.send(iframeHtml);
 
   } catch (error) {
     console.error('Proxy Route Error:', error);
@@ -595,6 +660,87 @@ router.get('/js-proxy', async (req, res) => {
   } catch (error) {
     console.error('[JS-Proxy] Error:', error.message);
     res.status(500).send('// Error fetching script');
+  }
+});
+
+// Secure Iframe Endpoint - Serves Notion page via encrypted token
+router.get('/secure-frame', async (req, res) => {
+  const { token } = req.query;
+  const { redis } = req;
+
+  if (!token) return res.status(400).send('Token required');
+
+  try {
+    // Verify JWT token
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+
+    // ONE-TIME USE: Check if token already used
+    const tokenStatus = await redis.get(`token:${payload.tokenId}`);
+    if (tokenStatus === 'used') {
+      return res.status(401).send('<h1>Token Already Used</h1><p>This link can only be used once. Please refresh the main page.</p>');
+    }
+    if (!tokenStatus) {
+      return res.status(401).send('<h1>Token Invalid or Expired</h1>');
+    }
+
+    // Mark token as used
+    await redis.set(`token:${payload.tokenId}`, 'used', 'EX', 300);
+
+    // Check token expiration (5 minutes)
+    if (Date.now() - payload.iat > 300000) {
+      return res.status(401).send('<h1>Token Expired</h1><p>Please refresh the page.</p>');
+    }
+
+    // Rate limiting per IP per page
+    const clientIP = req.ip || req.connection.remoteAddress;
+    const rateKey = `rate:iframe:${clientIP}:${payload.pageId}`;
+    const count = await redis.incr(rateKey);
+    if (count === 1) await redis.expire(rateKey, 60);
+
+    if (count > 30) { // Allow 30 requests per minute
+      return res.status(429).send('<h1>Too Many Requests</h1><p>Please wait a moment.</p>');
+    }
+
+    // Decrypt Notion URL
+    const notionUrl = decrypt(payload.encryptedUrl);
+
+    // Fetch page from Notion (simple fetch, no rewriting needed for iframe)
+    const response = await axios.get(notionUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html'
+      }
+    });
+
+    let html = response.data;
+
+    // Optional: Add watermark
+    if (payload.userId) {
+      const watermark = `
+        <div style="position:fixed;bottom:5px;right:5px;background:rgba(0,0,0,0.05);padding:2px 5px;font-size:9px;color:#999;pointer-events:none;">
+          Protected by NotionLock | ${new Date().toISOString().split('T')[0]}
+        </div>
+      `;
+      html = html.replace('</body>', watermark + '</body>');
+    }
+
+    // Send with security headers
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('X-Frame-Options', 'SAMEORIGIN');
+    res.set('Content-Security-Policy', "frame-ancestors 'self'");
+    res.send(html);
+
+  } catch (error) {
+    console.error('[Secure-Frame] Error:', error.message);
+
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).send('<h1>Invalid Token</h1>');
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).send('<h1>Token Expired</h1><p>Please refresh the page.</p>');
+    }
+
+    res.status(500).send('<h1>Error Loading Page</h1>');
   }
 });
 

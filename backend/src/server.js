@@ -34,7 +34,8 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  frameguard: false // Allow iframe embedding
 }));
 app.set('trust proxy', true); // Trust Traefik proxy
 const allowedOrigins = [

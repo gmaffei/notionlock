@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { NotionRenderer } from 'react-notion-x';
-// CSS imported in index.html
 
 const NotionViewer = ({ predefinedSlug }) => {
   const { slug: paramSlug } = useParams();
   const slug = predefinedSlug || paramSlug;
   const navigate = useNavigate();
-  const [recordMap, setRecordMap] = useState(null);
+  const [htmlContent, setHtmlContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showBranding, setShowBranding] = useState(true);
@@ -20,22 +18,24 @@ const NotionViewer = ({ predefinedSlug }) => {
       return;
     }
 
-    fetchNotionContent(accessToken);
+    fetchHtmlContent(accessToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  const fetchNotionContent = async (accessToken) => {
+  const fetchHtmlContent = async (accessToken) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}?token=${accessToken}`);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || errorData.error || 'Failed to load content');
+        throw new Error('Failed to load content');
       }
 
-      const data = await response.json();
-      setRecordMap(data.recordMap);
-      setShowBranding(data.showBranding);
+      // Get branding header
+      const branding = response.headers.get('X-Show-Branding');
+      setShowBranding(branding !== 'false');
+
+      const html = await response.text();
+      setHtmlContent(html);
     } catch (err) {
       setError(err.message || 'Errore nel caricamento del contenuto');
     } finally {
@@ -56,24 +56,24 @@ const NotionViewer = ({ predefinedSlug }) => {
       <div className="min-h-screen flex items-center justify-center text-red-600 bg-gray-50">
         <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
           <h3 className="text-xl font-bold mb-2">Error Loading Page</h3>
-          <p className="mb-4">{error}</p>
-          <p className="text-sm text-gray-600">
-            Make sure the page is public or shared with the NLock integration.
-          </p>
+          <p>{error}</p>
         </div>
       </div>
     );
   }
 
+  // Use data URL instead of srcDoc to avoid CORS issues
+  const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
+
   return (
-    <div className="min-h-screen bg-white">
-      {recordMap && (
-        <NotionRenderer
-          recordMap={recordMap}
-          fullPage={true}
-          darkMode={false}
-        />
-      )}
+    <div className="min-h-screen bg-white relative">
+      <iframe
+        src={dataUrl}
+        title="Notion Content"
+        className="w-full h-screen border-0"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        referrerPolicy="no-referrer"
+      />
 
       {showBranding && (
         <a

@@ -540,4 +540,62 @@ router.get('/:slug/info', async (req, res) => {
   }
 });
 
+// JavaScript Rewriting Proxy - Strips SharedWorker/Worker code
+router.get('/js-proxy', async (req, res) => {
+  const { url } = req.query;
+  const { redis } = req;
+
+  if (!url) return res.status(400).send('URL required');
+
+  try {
+    const cacheKey = `js:${url}`;
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      res.set('Content-Type', 'application/javascript; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.set('Access-Control-Allow-Origin', '*');
+      return res.send(cached);
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': '*/*',
+        'Referer': 'https://www.notion.so/'
+      },
+      responseType: 'text'
+    });
+
+    let code = response.data;
+
+    // Strip SharedWorker/Worker instantiations
+    code = code.replace(
+      /new\s+SharedWorker\s*\(/g,
+      '(function(){console.warn("[NotionLock] SharedWorker blocked");return{port:{start:function(){},addEventListener:function(){},postMessage:function(){}}}})&&new SharedWorker('
+    );
+
+    code = code.replace(
+      /new\s+Worker\s*\(/g,
+      '(function(){console.warn("[NotionLock] Worker blocked");return{postMessage:function(){},addEventListener:function(){},terminate:function(){}}})&&new Worker('
+    );
+
+    code = code.replace(
+      /navigator\.storage\.getDirectory\s*\(/g,
+      '(async function(){console.warn("[NotionLock] OPFS blocked");throw new Error("OPFS not available")})&&navigator.storage.getDirectory('
+    );
+
+    await redis.setex(cacheKey, 86400, code);
+
+    res.set('Content-Type', 'application/javascript; charset=utf-8');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.send(code);
+
+  } catch (error) {
+    console.error('[JS-Proxy] Error:', error.message);
+    res.status(500).send('// Error fetching script');
+  }
+});
+
 module.exports = router;

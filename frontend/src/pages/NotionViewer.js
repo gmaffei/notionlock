@@ -46,14 +46,13 @@ const NotionViewer = ({ predefinedSlug }) => {
     );
   }
 
+  const accessToken = sessionStorage.getItem(`access_${slug}`);
+
   return (
     <div className="h-screen w-screen overflow-hidden relative bg-gray-100">
-      {/* 
-        Direct iframe to backend endpoint - backend returns iframe HTML
-       */}
       <iframe
         title="Notion Content"
-        src={`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}`}
+        src={`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}?token=${accessToken}`}
         className="w-full h-full border-0"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
       />

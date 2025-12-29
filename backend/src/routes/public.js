@@ -144,14 +144,17 @@ router.get('/view/:slug', async (req, res) => {
   const { slug } = req.params;
   const { redis, db } = req;
 
-  // 1. Verify authentication via cookie (iframe compatible)
-  const token = req.cookies[`auth_${slug}`];
+  // 1. Verify authentication via query parameter (cross-domain compatible)
+  const token = req.query.token;
   if (!token) {
     return res.status(401).send('<h1>Unauthorized</h1><p>Please log in first.</p>');
   }
 
   try {
-    jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.slug !== slug) {
+      return res.status(403).send('<h1>Forbidden</h1><p>Token mismatch.</p>');
+    }
 
     // 2. Get Notion URL and Branding Settings
     let pageData = await redis.get(`page:${slug}`);

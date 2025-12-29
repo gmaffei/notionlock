@@ -199,30 +199,99 @@ router.get('/view/:slug', async (req, res) => {
       }
     }
 
-    // 3. Fetch and Return Notion Content Directly
+    // 3. Generate Encrypted Token for Secure Iframe
     const notionUrl = pageData.notionUrl || pageData.notion_url;
-    
-    try {
-      // Fetch Notion HTML directly (server-side)
-      const notionResponse = await axios.get(notionUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'en-US,en;q=0.9'
-        },
-        maxRedirects: 5
-      });
 
-      // Return HTML directly for frontend's srcDoc injection
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', showBranding.toString());
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.send(notionResponse.data);
+    // Encrypt the Notion URL
+    const encryptedUrl = encrypt(notionUrl);
 
-    } catch (fetchError) {
-      console.error('[View] Notion fetch error:', fetchError.message);
-      return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
-    }
+    // Generate one-time token
+    const tokenId = crypto.randomBytes(16).toString('hex');
+    const clientIP = req.ip || req.connection.remoteAddress;
+
+    // Create JWT with encrypted URL and metadata
+    const token = jwt.sign({
+      encryptedUrl,
+      pageId: pageData.id,
+      userId: pageData.user_id,
+      tokenId,
+      ipHash: hashIP(clientIP),
+      iat: Date.now()
+    }, process.env.JWT_SECRET, { expiresIn: '5m' });
+
+    // Track token usage (one-time use)
+    await redis.setex(`token:${tokenId}`, 300, 'unused'); // 5 min expiry
+
+    // Serve iframe wrapper instead of proxied HTML
+    const iframeHtml = `
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>${pageData.title || 'Protected Page'}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html { width: 100%; height: 100%; overflow: hidden; }
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            display: block;
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: system-ui, -apple-system, sans-serif;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Loading protected content...</div>
+    <iframe 
+        id="content-frame"
+        src="/api/p/secure-frame?token=${token}"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock"
+        referrerpolicy="no-referrer"
+        loading="eager">
+    </iframe>
+    <script>
+        // Remove loading message when iframe loads
+        document.getElementById('content-frame').onload = function() {
+            document.querySelector('.loading').style.display = 'none';
+        };
+        
+        // Security: Prevent inspection attempts
+        if (typeof window !== 'undefined') {
+            // Disable right-click (can be bypassed but adds friction)
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            
+            // Detect DevTools (basic check)
+            const devtools = /./;
+            devtools.toString = function() {
+                this.opened = true;
+            };
+            console.log('%c', devtools);
+            
+            // Make it harder to extract iframe src
+            Object.defineProperty(HTMLIFrameElement.prototype, 'src', {
+                get: function() { return 'about:blank'; },
+                set: function(v) { }
+            });
+        }
+    </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Show-Branding', showBranding.toString());
+    res.setHeader('X-Frame-Options', 'DENY'); // Prevent embedding our page
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+    res.send(iframeHtml);
 
   } catch (error) {
     console.error('Proxy Route Error:', error);

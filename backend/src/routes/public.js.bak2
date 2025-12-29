@@ -199,30 +199,6 @@ router.get('/view/:slug', async (req, res) => {
       }
     }
 
-    // 3. Fetch and Return Notion Content Directly
-    const notionUrl = pageData.notionUrl || pageData.notion_url;
-    
-    try {
-      // Fetch Notion HTML directly (server-side)
-      const notionResponse = await axios.get(notionUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'text/html',
-          'Accept-Language': 'en-US,en;q=0.9'
-        },
-        maxRedirects: 5
-      });
-
-      // Return HTML directly for frontend's srcDoc injection
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', showBranding.toString());
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.send(notionResponse.data);
-
-    } catch (fetchError) {
-      console.error('[View] Notion fetch error:', fetchError.message);
-      return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
-    }
 
   } catch (error) {
     console.error('Proxy Route Error:', error);

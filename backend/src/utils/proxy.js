@@ -30,23 +30,21 @@ async function fetchAndRewriteNotionPage(notionUrl) {
 
         let html = response.data;
 
-        // FINAL SOLUTION: Inject worker blocking as ABSOLUTE FIRST BYTES before even DOCTYPE
-        // Use Object.defineProperty to make it IMPOSSIBLE to override
-        const blocker = `<script>
-(function(){
-try{
-Object.defineProperty(window,'SharedWorker',{value:function(){throw new Error("Workers disabled")},writable:false,configurable:false});
-Object.defineProperty(window,'Worker',{value:function(){throw new Error("Workers disabled")},writable:false,configurable:false});
-if(navigator.storage?.getDirectory)delete navigator.storage.getDirectory;
-}catch(e){console.error("Blocker failed:",e)}
-})();
-</script>`;
-
-        // Prepend to ENTIRE HTML - this will be the very first thing the browser sees
-        html = blocker + html;
-
-        // NOW parse with Cheerio  
+        // Parse with Cheerio  
         const $ = cheerio.load(html);
+
+        // CRITICAL FIX: Rewrite all Notion script tags to proxy through our JS modifier
+        // This will strip SharedWorker/Worker code server-side before sending to browser
+        $('script[src]').each((i, elem) => {
+            const src = $(elem).attr('src');
+
+            // Only rewrite Notion scripts (not third-party CDN scripts)
+            if (src && (src.includes('notion.so') || src.startsWith('/_next/') || src.startsWith('/_assets/') || src.startsWith('/'))) {
+                const absoluteUrl = src.startsWith('http') ? src : `https://www.notion.so${src}`;
+                const proxiedUrl = `${API_HOST}/api/p/js-proxy?url=${encodeURIComponent(absoluteUrl)}`;
+                $(elem).attr('src', proxiedUrl);
+            }
+        });
 
         // 2. Rewrite base to ensure relative links work (or remove it to handle manually)
         // Notion uses relative paths often, we need to make sure they resolve to Notion's domains

@@ -235,6 +235,113 @@ router.get('/view/:slug', async (req, res) => {
   }
 });
 
+// NEW: Notion API Endpoint - Returns JSON data for react-notion-x
+router.get('/view/:slug/data', async (req, res) => {
+  const { slug } = req.params;
+  const { db, redis } = req;
+
+  try {
+    // Import NotionService
+    const notionService = require('../services/notion');
+
+    // 1. Get page data from DB
+    const pageResult = await db.query(
+      'SELECT * FROM protected_pages WHERE slug = $1',
+      [slug]
+    );
+
+    if (pageResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+
+    const pageData = pageResult.rows[0];
+
+    // 2. Check password if required
+    if (pageData.password_hash) {
+      // Check for valid JWT token in cookies
+      const token = req.cookies[`auth_${slug}`];
+
+      if (!token) {
+        return res.status(401).json({
+          error: 'Password required',
+          requiresPassword: true
+        });
+      }
+
+      try {
+        jwt.verify(token, process.env.JWT_SECRET);
+      } catch (err) {
+        return res.status(401).json({
+          error: 'Invalid or expired token',
+          requiresPassword: true
+        });
+      }
+    }
+
+    // 3. Extract and validate page ID
+    const pageId = notionService.extractPageId(pageData.notionUrl || pageData.notion_url);
+
+    if (!pageId) {
+      return res.status(400).json({ error: 'Invalid Notion URL format' });
+    }
+
+    // 4. Try to get from cache first
+    const cacheKey = `notion:page:${pageId}`;
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      console.log(`[API] Cache hit for page ${pageId}`);
+      return res.json(JSON.parse(cached));
+    }
+
+    // 5. Fetch from Notion API
+    console.log(`[API] Fetching from Notion API: ${pageId}`);
+    const notionData = await notionService.getPageData(pageId);
+    const recordMap = notionService.toRecordMap(notionData);
+
+    // 6. Determine branding visibility
+    let showBranding = true;
+    if (pageData.user_id) {
+      const settingsRes = await db.query(
+        'SELECT subscription_status, branding_enabled FROM users WHERE id = $1',
+        [pageData.user_id]
+      );
+
+      if (settingsRes.rows.length > 0) {
+        const row = settingsRes.rows[0];
+        const isPro = row.subscription_status && row.subscription_status !== 'free';
+        showBranding = isPro ? (row.branding_enabled !== false) : true;
+      }
+    }
+
+    // 7. Prepare response
+    const response = {
+      recordMap,
+      showBranding,
+      pageTitle: notionData.page.properties?.title?.title?.[0]?.plain_text || 'Untitled'
+    };
+
+    // 8. Cache for 5 minutes
+    await redis.setex(cacheKey, 300, JSON.stringify(response));
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Notion API Route Error:', error);
+
+    if (error.message?.includes('API client not initialized')) {
+      return res.status(503).json({
+        error: 'Notion API not configured. Please add NOTION_API_KEY to environment variables.'
+      });
+    }
+
+    res.status(500).json({
+      error: 'Error loading page from Notion',
+      details: error.message
+    });
+  }
+});
+
 // NEW: Asset Proxy Endpoint (Moved out of view/:slug scope)
 router.get('/asset', async (req, res) => {
   const { url } = req.query;

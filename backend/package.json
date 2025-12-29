@@ -9,6 +9,7 @@
         "db:init": "node scripts/init-db.js"
     },
     "dependencies": {
+        "@notionhq/client": "^5.6.0",
         "axios": "^1.13.2",
         "bcryptjs": "^2.4.3",
         "cheerio": "^1.1.2",

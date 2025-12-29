@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { NotionRenderer } from 'react-notion-x';
-import 'react-notion-x/src/styles.css';
+import 'react-notion-x/build/index.css';
 
 const NotionViewer = ({ predefinedSlug }) => {
   const { slug: paramSlug } = useParams();

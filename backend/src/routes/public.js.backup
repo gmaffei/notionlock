@@ -48,24 +48,13 @@ router.post('/:slug', async (req, res) => {
   // Rate limiting per IP e slug
   const clientIP = req.ip || 'unknown';
   const rateLimitKey = `rate_limit:${clientIP}:${slug}`;
-  // Sliding window rate limit: max 10 attempts per 15 minutes
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000; // 15 minutes
-  const limit = 10;
-  const attemptsKey = `rate_limit:${clientIP}:${slug}`;
-  // Remove old entries
-  await redis.zremrangebyscore(attemptsKey, 0, now - windowMs);
-  // Count current attempts
-  const attemptsCount = await redis.zcard(attemptsKey);
-  if (attemptsCount >= limit) {
+  const attempts = await redis.get(rateLimitKey);
+
+  if (attempts && parseInt(attempts) >= 5) {
     return res.status(429).json({
       error: 'Troppi tentativi falliti. Riprova tra 15 minuti.'
     });
   }
-  // Record this attempt
-  await redis.zadd(attemptsKey, now, `${now}`);
-  // Set TTL so key expires after window
-  await redis.expire(attemptsKey, Math.ceil(windowMs / 1000));
 
   try {
     // Try cache first
@@ -74,7 +63,7 @@ router.post('/:slug', async (req, res) => {
     if (!pageData) {
       // Fallback to database
       const result = await db.query(
-        'SELECT p.id, p.notion_url, p.password_hash, p.title, u.subscription_status, u.branding_enabled FROM protected_pages p\n          JOIN users u ON p.user_id = u.id WHERE p.slug = $1',
+        'SELECT id, notion_url, password_hash, title FROM protected_pages WHERE slug = $1',
         [slug]
       );
 
@@ -82,36 +71,30 @@ router.post('/:slug', async (req, res) => {
         return res.status(404).json({ error: 'Pagina non trovata' });
       }
 
-      const row = result.rows[0];
-      // Determine branding based on plan
-      const isPro = row.subscription_status && row.subscription_status !== 'free';
-      const showBranding = isPro ? (row.branding_enabled !== false) : true;
+      pageData = result.rows[0];
 
-      pageData = {
-        id: row.id,
-        notionUrl: row.notion_url,
-        passwordHash: row.password_hash,
-        title: row.title,
-        showBranding
+      // Cache for next time - normalize field names
+      const normalizedData = {
+        id: pageData.id,
+        notionUrl: pageData.notion_url,
+        passwordHash: pageData.password_hash,
+        title: pageData.title
       };
 
-      // Cache for next time (include branding flag)
       await redis.setex(
         `page:${slug}`,
         3600, // 1 hour
-        JSON.stringify(pageData)
+        JSON.stringify(normalizedData)
       );
     } else {
       pageData = JSON.parse(pageData);
     }
 
     // Verify password
-    const isValid = await bcrypt.compare(password, pageData.passwordHash);
+    const isValid = await bcrypt.compare(password, pageData.passwordHash || pageData.password_hash);
 
     if (!isValid) {
       // Increment rate limit counter
-      // This is the old counter, the new sliding window is above.
-      // For now, we'll keep this for logging purposes, but the primary rate limit is the sliding window.
       const currentAttempts = await redis.get(rateLimitKey) || 0;
       await redis.setex(rateLimitKey, 900, parseInt(currentAttempts) + 1); // 15 minutes
 
@@ -128,8 +111,8 @@ router.post('/:slug', async (req, res) => {
       return res.status(401).json({ error: 'Password non corretta' });
     }
 
-    // Reset sliding window attempts on successful login
-    await redis.del(`rate_limit:${clientIP}:${slug}`);
+    // Reset rate limit on successful login
+    await redis.del(rateLimitKey);
 
     // Create access token
     const accessToken = jwt.sign(
@@ -146,7 +129,7 @@ router.post('/:slug', async (req, res) => {
 
     res.json({
       success: true,
-      notionUrl: pageData.notionUrl,
+      notionUrl: pageData.notionUrl || pageData.notion_url,
       accessToken,
       proxyUrl: `/api/p/view/${slug}`
     });
@@ -173,43 +156,89 @@ router.get('/view/:slug', async (req, res) => {
       return res.status(403).send('<h1>Forbidden</h1><p>Token mismatch.</p>');
     }
 
-    // 2. Get page data (including branding) from cache or DB
+    // 2. Get Notion URL and Branding Settings
     let pageData = await redis.get(`page:${slug}`);
+    let showBranding = true;
+
     if (!pageData) {
+      // Fetch Page AND User config
       const result = await db.query(`
-            SELECT p.notion_url, p.id, u.subscription_status, u.branding_enabled
-            FROM protected_pages p
-            JOIN users u ON p.user_id = u.id
-            WHERE p.slug = $1
-          `, [slug]);
+        SELECT p.notion_url, u.branding_enabled, u.subscription_status 
+        FROM protected_pages p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.slug = $1
+      `, [slug]);
+
       if (result.rows.length === 0) return res.status(404).send('Not Found');
+
       const row = result.rows[0];
+      pageData = { notionUrl: row.notion_url };
+
+      // If user is FREE, branding is ALWAYS enabled regardless of setting
+      // If user is PRO/LIFETIME, respect their setting
       const isPro = row.subscription_status && row.subscription_status !== 'free';
-      const showBranding = isPro ? (row.branding_enabled !== false) : true;
-      pageData = {
-        notionUrl: row.notion_url,
-        id: row.id,
-        showBranding
-      };
-      // Cache including branding flag
-      await redis.setex(`page:${slug}`, 3600, JSON.stringify(pageData));
+      showBranding = isPro ? (row.branding_enabled !== false) : true;
     } else {
       pageData = JSON.parse(pageData);
+      // For cached pages, we need to decide how to store branding info. 
+      // For now, let's just make a separate lightweight query for branding/settings if cache doesn't have it
+      // OR invalidating cache on setting change.
+      // Easiest for now: just re-query branding status quickly or assume true if missing.
+      // Ideally we'd cache this too. Let's do a quick DB lookup for settings to be reactive.
+      const settingsRes = await db.query(`
+          SELECT u.branding_enabled, u.subscription_status
+          FROM protected_pages p
+          JOIN users u ON p.user_id = u.id
+          WHERE p.slug = $1
+      `, [slug]);
+      if (settingsRes.rows.length > 0) {
+        const row = settingsRes.rows[0];
+        const isPro = row.subscription_status && row.subscription_status !== 'free';
+        showBranding = isPro ? (row.branding_enabled !== false) : true;
+      }
     }
 
-    // 3. Fetch and return HTML (supports all content)
-    const notionUrl = pageData.notionUrl;
+    // 3. Fetch from Notion API and return JSON for react-notion-x
+    const notionUrl = pageData.notionUrl || pageData.notion_url;
+    const notionService = require('../services/notion');
+
     try {
-      const rewrittenHtml = await fetchAndRewriteNotionPage(notionUrl);
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', pageData.showBranding.toString());
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.send(rewrittenHtml);
-    } catch (fetchError) {
-      console.error('[View] Notion fetch error:', fetchError.message);
-      return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
+      // Extract page ID from URL  
+      const pageId = notionService.extractPageId(notionUrl);
+      if (!pageId) {
+        return res.status(400).json({ error: 'Invalid Notion URL format' });
+      }
+
+      // Fetch page data from Notion API
+      const pageContentData = await notionService.getPageData(pageId);
+
+      // Convert to recordMap format for react-notion-x
+      const recordMap = notionService.toRecordMap(pageContentData);
+
+      // Return JSON instead of HTML
+      res.json({
+        recordMap,
+        showBranding
+      });
+
+    } catch (notionError) {
+      console.error('[View] Notion API error:', notionError.message);
+
+      if (notionError.code === 'object_not_found' || notionError.status === 404) {
+        return res.status(403).json({
+          error: 'Page not accessible',
+          message: 'Make sure the page is public or shared with the NLock integration.'
+        });
+      }
+
+      return res.status(500).json({
+        error: 'Error fetching page from Notion',
+        details: notionError.message
+      });
     }
+
   } catch (error) {
+    console.error('Proxy Route Error:', error);
     console.error('Proxy Route Error:', error);
     res.status(500).json({ error: 'Error loading page', details: error.message });
   }
@@ -497,42 +526,26 @@ router.get('/:slug/info', async (req, res) => {
 
   try {
     let pageData = await redis.get(`page:${slug}`);
+
     if (!pageData) {
       const result = await db.query(
         'SELECT title FROM protected_pages WHERE slug = $1',
         [slug]
       );
+
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Pagina non trovata' });
       }
+
       pageData = { title: result.rows[0].title };
     } else {
       pageData = JSON.parse(pageData);
     }
+
     res.json({ title: pageData.title });
   } catch (error) {
     console.error('Get page info error:', error);
     res.status(500).json({ error: 'Errore recupero informazioni' });
-  }
-});
-
-// New route: refresh JWT token
-router.post('/refresh/:slug', async (req, res) => {
-  const { slug } = req.params;
-  const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
-  if (!token) {
-    return res.status(401).json({ error: 'Token required' });
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.slug !== slug) {
-      return res.status(403).json({ error: 'Token slug mismatch' });
-    }
-    const newToken = jwt.sign({ pageId: decoded.pageId, slug }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ accessToken: newToken });
-  } catch (err) {
-    console.error('Refresh token error:', err);
-    res.status(401).json({ error: 'Invalid or expired token' });
   }
 });
 

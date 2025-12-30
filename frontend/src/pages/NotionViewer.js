@@ -9,6 +9,16 @@ const NotionViewer = ({ predefinedSlug }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showBranding, setShowBranding] = useState(true);
+  // Helper to decode JWT payload
+  const decodeJwt = (token) => {
+    try {
+      const payload = token.split('.')[1];
+      const decoded = JSON.parse(atob(payload));
+      return decoded;
+    } catch (e) {
+      return null;
+    }
+  };
 
   useEffect(() => {
     const accessToken = sessionStorage.getItem(`access_${slug}`);
@@ -20,6 +30,29 @@ const NotionViewer = ({ predefinedSlug }) => {
 
     fetchHtmlContent(accessToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  // Refresh token if close to expiry
+  useEffect(() => {
+    const token = sessionStorage.getItem(`access_${slug}`);
+    if (!token) return;
+    const payload = decodeJwt(token);
+    if (!payload) return;
+    const now = Math.floor(Date.now() / 1000);
+    // Refresh if less than 5 minutes remaining
+    if (payload.exp - now < 5 * 60) {
+      fetch(`${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/refresh/${slug}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.accessToken) {
+            sessionStorage.setItem(`access_${slug}`, data.accessToken);
+          }
+        })
+        .catch(() => { });
+    }
   }, [slug]);
 
   const fetchHtmlContent = async (accessToken) => {

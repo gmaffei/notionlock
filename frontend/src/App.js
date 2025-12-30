@@ -11,6 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 import PasswordEntry from './pages/PasswordEntry';
 import NotionViewer from './pages/NotionViewer';
+import Checkout from './pages/Checkout';
 import EmailVerification from './pages/EmailVerification';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -43,6 +44,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/upgrade" element={<Checkout planId="YOUR_VARIANT_ID" />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/about" element={<About />} />
             <Route path="/accessibility" element={<Accessibility />} />

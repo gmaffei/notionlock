@@ -211,7 +211,23 @@ router.get('/view/:slug', async (req, res) => {
       res.send(rewrittenHtml);
     } catch (fetchError) {
       console.error('[View] Notion fetch error:', fetchError.message);
-      return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
+      // Fallback: try to fetch raw Notion page without rewriting
+      try {
+        const rawResponse = await fetch(notionUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (NotionLock Proxy)' }
+        });
+        const rawHtml = await rawResponse.text();
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('X-Show-Branding', pageData.showBranding.toString());
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return res.send(rawHtml);
+      } catch (fallbackError) {
+        console.error('Fallback fetch error:', fallbackError.message);
+        return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
+      }
     }
   } catch (error) {
     console.error('Proxy Route Error:', error);

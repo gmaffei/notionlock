@@ -10,11 +10,12 @@ const Checkout = ({ planId }) => {
     const startCheckout = async () => {
         setLoading(true);
         try {
+            const token = sessionStorage.getItem(`access_${new URLSearchParams(window.location.search).get('slug')}`);
             const res = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/payments/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('access_' + (new URLSearchParams(window.location.search).get('slug'))}`,
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ variantId: planId })
             });

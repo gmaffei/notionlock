@@ -95,15 +95,13 @@ const NotionViewer = ({ predefinedSlug }) => {
     );
   }
 
-  // Use data URL instead of srcDoc to avoid CORS issues
-  // Use iframe src directly to load proxied Notion page, preserving origin and allowing localStorage
-  const iframeSrc = `${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}?token=${accessToken}`;
-  setHtmlContent(iframeSrc);
 
+
+  // Render the iframe using the URL stored in htmlContent
   return (
     <div className="min-h-screen bg-white relative">
       <iframe
-        src={dataUrl}
+        src={htmlContent}
         title="Notion Content"
         className="w-full h-screen border-0"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"

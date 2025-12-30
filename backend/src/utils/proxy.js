@@ -2,8 +2,9 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 async function fetchAndRewriteNotionPage(notionUrl) {
-    // Define API_HOST with fallback to localhost for dev environments
-    const API_HOST = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+    // Use process.env.REACT_APP_API_URL if available, otherwise default to production domain
+    // CRITICAL: Do NOT fallback to localhost in production or mixed content errors will occur
+    const API_HOST = process.env.REACT_APP_API_URL || 'https://api.notionlock.com';
 
     try {
         // 1. Fetch the raw HTML from Notion

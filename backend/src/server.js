@@ -160,55 +160,7 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
   }
 });
 
-// NEW: Generic CORS Proxy for Notion API calls (v3/getStatsigResults, etc.)
-// This endpoint tunnels requests from the frontend script to Notion, bypassing CORS.
-app.use('/api/p/cors-proxy', async (req, res) => {
-  const targetUrl = req.query.url;
-  if (!targetUrl) return res.status(400).send('URL required');
 
-  // Headers to spoof Notion
-  const headers = {
-    ...req.headers,
-    host: 'www.notion.so',
-    origin: 'https://www.notion.so',
-    referer: 'https://www.notion.so/',
-    // Remove headers that might confuse Notion or are specific to our proxy
-    'x-forwarded-for': undefined,
-    'x-forwarded-host': undefined,
-    'x-forwarded-proto': undefined
-  };
-
-  try {
-    const response = await axios({
-      method: req.method,
-      url: targetUrl,
-      data: req.body,
-      headers: headers,
-      responseType: 'stream',
-      validateStatus: () => true // Pass through all statuses (4xx, 5xx)
-    });
-
-    // Set permissive CORS headers for OUR response to the browser
-    res.set('Access-Control-Allow-Origin', '*');
-    res.removeHeader('Access-Control-Allow-Credentials');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', '*');
-
-    // Forward Notion's content type
-    if (response.headers['content-type']) {
-      res.set('Content-Type', response.headers['content-type']);
-    }
-
-    // Strip restrictive headers from Notion's response
-    res.removeHeader('Content-Security-Policy');
-    res.removeHeader('X-Frame-Options');
-
-    response.data.pipe(res);
-  } catch (error) {
-    console.error('CORS Proxy Error:', targetUrl, error.message);
-    res.status(500).send('Proxy Error');
-  }
-});
 app.use('/api/auth/register', authLimiter, authRoutes); // Rate limit only register
 app.use('/api/auth/verify-email', authRoutes); // No rate limit on verification
 app.use('/api/auth/me', authRoutes); // No rate limit on user info

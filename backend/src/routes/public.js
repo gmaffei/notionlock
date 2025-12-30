@@ -203,6 +203,10 @@ router.get('/view/:slug', async (req, res) => {
       const rewrittenHtml = await fetchAndRewriteNotionPage(notionUrl);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('X-Show-Branding', pageData.showBranding.toString());
+      // CORS headers to allow assets and scripts to load correctly
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.send(rewrittenHtml);
     } catch (fetchError) {

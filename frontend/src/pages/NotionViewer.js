@@ -67,8 +67,8 @@ const NotionViewer = ({ predefinedSlug }) => {
       const branding = response.headers.get('X-Show-Branding');
       setShowBranding(branding !== 'false');
 
-      const html = await response.text();
-      setHtmlContent(html);
+      // Use the iframe src URL directly (htmlContent now holds the URL)
+      setHtmlContent(response.url);
     } catch (err) {
       setError(err.message || 'Errore nel caricamento del contenuto');
     } finally {
@@ -96,7 +96,9 @@ const NotionViewer = ({ predefinedSlug }) => {
   }
 
   // Use data URL instead of srcDoc to avoid CORS issues
-  const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
+  // Use iframe src directly to load proxied Notion page, preserving origin and allowing localStorage
+  const iframeSrc = `${process.env.REACT_APP_API_URL || 'https://api.notionlock.com/api'}/p/view/${slug}?token=${accessToken}`;
+  setHtmlContent(iframeSrc);
 
   return (
     <div className="min-h-screen bg-white relative">

@@ -207,7 +207,8 @@ router.get('/view/:slug', async (req, res) => {
     try {
       const rewrittenHtml = await fetchAndRewriteNotionPage(notionUrl);
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', pageData.showBranding.toString());
+      const showBrandingVal = (pageData.showBranding !== false).toString();
+      res.setHeader('X-Show-Branding', showBrandingVal);
       // CORS headers to allow assets and scripts to load correctly
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -227,7 +228,8 @@ router.get('/view/:slug', async (req, res) => {
         });
         const rawHtml = rawResponse.data;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.setHeader('X-Show-Branding', pageData.showBranding.toString());
+        const showBrandingVal = (pageData.showBranding !== false).toString();
+        res.setHeader('X-Show-Branding', showBrandingVal);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');

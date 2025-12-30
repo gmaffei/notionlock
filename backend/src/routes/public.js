@@ -433,93 +433,73 @@ router.get('/asset', async (req, res) => {
   }
 });
 
-// NEW: CORS Proxy Endpoint for API calls (fetch/XHR)
-router.get('/cors-proxy', async (req, res) => {
+// NEW: CORS Proxy Endpoint for API calls (fetch/XHR) - Supports GET, POST, etc.
+router.all('/cors-proxy', async (req, res) => {
   const { url } = req.query;
 
   if (!url) return res.status(400).send('URL required');
 
+  // Handle preflight OPTIONS explicitly
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-notion-active-user-header, notion-client-version');
+    return res.status(200).end();
+  }
+
   try {
-    const response = await axios({
-      method: 'get',
+    const method = req.method;
+
+    // Construct headers to forward to Notion
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/javascript, */*; q=0.01',
+      'Origin': 'https://www.notion.so',
+      'Referer': 'https://www.notion.so/',
+    };
+
+    // Forward crucial headers if present
+    if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
+    if (req.headers['notion-client-version']) headers['notion-client-version'] = req.headers['notion-client-version'];
+    if (req.headers['x-notion-active-user-header']) headers['x-notion-active-user-header'] = req.headers['x-notion-active-user-header'];
+    if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
+
+    const axiosConfig = {
+      method: method,
       url: url,
       responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9'
-      }
-    });
+      headers: headers,
+      data: (method === 'POST' || method === 'PUT') ? req.body : undefined
+    };
 
-    // Forward the content type from the original response
-    const contentType = response.headers['content-type'] || 'application/json';
+    const response = await axios(axiosConfig);
 
-    // Set CORS headers
-    res.set('Content-Type', contentType);
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.removeHeader('Access-Control-Allow-Credentials');
-    res.removeHeader('Cross-Origin-Resource-Policy');
-    res.removeHeader('X-Frame-Options');
-    res.removeHeader('Content-Security-Policy');
+    // Set CORS headers on response
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-notion-active-user-header, notion-client-version');
+
+    // Forward Content-Type
+    const contentType = response.headers['content-type'];
+    if (contentType) res.setHeader('Content-Type', contentType);
 
     res.send(response.data);
 
   } catch (error) {
-    console.error('CORS Proxy Error for:', url, error.message);
-    res.status(error.response?.status || 500).send(error.response?.data || 'Error proxying request');
+    console.error(`CORS Proxy Error [${req.method} ${url}]:`, error.message);
+
+    // If Notion returned an error response, forward it
+    if (error.response) {
+      res.status(error.response.status);
+      res.setHeader('Access-Control-Allow-Origin', '*'); // Ensure CORS on error too
+      if (error.response.data) res.send(error.response.data);
+      else res.end();
+    } else {
+      res.status(500).send('Proxy Error');
+    }
   }
 });
 
-// CORS Proxy POST endpoint
-router.post('/cors-proxy', async (req, res) => {
-  const { url } = req.query;
-
-  if (!url) return res.status(400).send('URL required');
-
-  try {
-    const response = await axios({
-      method: 'post',
-      url: url,
-      data: req.body,
-      responseType: 'arraybuffer',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Content-Type': req.headers['content-type'] || 'application/json'
-      }
-    });
-
-    // Forward the content type from the original response
-    const contentType = response.headers['content-type'] || 'application/json';
-
-    // Set CORS headers
-    res.set('Content-Type', contentType);
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.removeHeader('Access-Control-Allow-Credentials');
-    res.removeHeader('Cross-Origin-Resource-Policy');
-    res.removeHeader('X-Frame-Options');
-    res.removeHeader('Content-Security-Policy');
-
-    res.send(response.data);
-
-  } catch (error) {
-    console.error('CORS Proxy POST Error for:', url, error.message);
-    res.status(error.response?.status || 500).send(error.response?.data || 'Error proxying request');
-  }
-});
-
-// Handle OPTIONS preflight for CORS proxy
-router.options('/cors-proxy', (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.sendStatus(204);
-});
 
 // Handle OPTIONS preflight for asset endpoint
 router.options('/asset', (req, res) => {

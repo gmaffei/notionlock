@@ -219,7 +219,11 @@ router.get('/view/:slug', async (req, res) => {
       // Fallback: try to fetch raw Notion page without rewriting
       try {
         const rawResponse = await axios.get(notionUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (NotionLock Proxy)' }
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5'
+          }
         });
         const rawHtml = rawResponse.data;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -231,7 +235,15 @@ router.get('/view/:slug', async (req, res) => {
         return res.send(rawHtml);
       } catch (fallbackError) {
         console.error('Fallback fetch error:', fallbackError.message);
-        return res.status(500).send('<h1>Error Loading Page</h1><p>Could not fetch content from Notion.</p>');
+        // Return the actual error message to the client for debugging
+        return res.status(500).send(`
+            <h1>Error Loading Page</h1>
+            <p>Could not fetch content from Notion.</p>
+            <hr>
+            <h3>Debug Info:</h3>
+            <p><strong>Primary Error:</strong> ${fetchError.message}</p>
+            <p><strong>Fallback Error:</strong> ${fallbackError.message}</p>
+          `);
       }
     }
   } catch (error) {

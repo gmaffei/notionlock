@@ -198,6 +198,11 @@ router.get('/view/:slug', async (req, res) => {
     }
 
     // 3. Fetch and return HTML (supports all content)
+    // Ensure notionUrl is present
+    if (!pageData.notionUrl) {
+      console.error('Missing notionUrl for slug', slug);
+      return res.status(500).json({ error: 'Missing Notion URL for page' });
+    }
     const notionUrl = pageData.notionUrl;
     try {
       const rewrittenHtml = await fetchAndRewriteNotionPage(notionUrl);
@@ -213,10 +218,10 @@ router.get('/view/:slug', async (req, res) => {
       console.error('[View] Notion fetch error:', fetchError.message);
       // Fallback: try to fetch raw Notion page without rewriting
       try {
-        const rawResponse = await fetch(notionUrl, {
+        const rawResponse = await axios.get(notionUrl, {
           headers: { 'User-Agent': 'Mozilla/5.0 (NotionLock Proxy)' }
         });
-        const rawHtml = await rawResponse.text();
+        const rawHtml = rawResponse.data;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('X-Show-Branding', pageData.showBranding.toString());
         res.setHeader('Access-Control-Allow-Origin', '*');

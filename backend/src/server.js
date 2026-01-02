@@ -98,7 +98,6 @@ app.use((req, res, next) => {
 // NEW: Catch-all proxy for Notion assets (Next.js chunks, images, etc.)
 // These requests come from the proxied page relative links like /_next/...
 app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
-  // Use www.notion.so to avoid redirects to home/login which notion.site does for assets
   const url = `https://www.notion.so${req.originalUrl}`;
   const { redis } = req;
 
@@ -108,7 +107,7 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Opener-Policy', 'same-origin');
-    res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.set('Cross-Origin-Embedder-Policy', 'credentialless');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('X-Frame-Options');
@@ -140,7 +139,8 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
     });
 
     if (response.status >= 400) {
-      // If Notion returns 404, we return 404
+      // Return 404 with headers so browser doesn't block it
+      setProxyHeaders(res, 'text/plain');
       return res.status(response.status).send('Not Found on Notion');
     }
 
@@ -158,6 +158,7 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
 
   } catch (error) {
     console.error('Wildcard Proxy Error:', url, error.message);
+    setProxyHeaders(res, 'text/plain'); // Ensure headers are set on error
     res.status(500).send('Proxy Error');
   }
 });

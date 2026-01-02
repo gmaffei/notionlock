@@ -20,7 +20,7 @@ const settingsRoutes = require('./routes/settings');
 
 // Initialize Express
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5002;
 
 // Database connection
 const db = new Pool({
@@ -29,7 +29,7 @@ const db = new Pool({
 });
 
 // Redis connection
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL || 'redis://:devpassword@localhost:6379');
 
 // Middleware
 app.use(helmet({

@@ -52,29 +52,40 @@ async function fetchAndRewriteNotionPage(notionUrl) {
         // OR proxy them. For MVP, we'll try to resolve them to absolute Notion URLs where possible
         // or leave them if they are data-uris.
 
-        // Inject Fetch/XHR Interceptor to tunnel API calls through our CORS proxy
-        $('head').append(`
+        // CRITICAL: Inject interceptor FIRST via prepend, before any Notion scripts run
+        // This ensures we catch all dynamic script loading
+        $('head').prepend(`
         <script>
+            (function() {
+            // Execute immediately in IIFE to ensure it runs before anything else
             console.log("NotionLock Proxy Interceptor Loaded");
             const PROXY_ENDPOINT = "${API_HOST}/api/p/cors-proxy?url=";
             const ASSET_ENDPOINT = "${API_HOST}/api/p/asset?url=";
+            const JS_PROXY_ENDPOINT = "${API_HOST}/api/p/js-proxy?url=";
 
             function rewriteUrl(url, type = 'api') {
               if (typeof url !== 'string') return url;
-              
+
               // Handle relative URLs manually
               if (url.startsWith("/")) {
                 url = "https://www.notion.so" + url;
               }
-              
+
+              // Skip already proxied URLs
+              if (url.includes('/api/p/')) return url;
+
               // Proxy Notion calls
               if (url.includes("notion.so") || url.includes("notion.site")) {
+                if (type === 'script') {
+                  return JS_PROXY_ENDPOINT + encodeURIComponent(url);
+                }
                 const endpoint = type === 'asset' ? ASSET_ENDPOINT : PROXY_ENDPOINT;
                 return endpoint + encodeURIComponent(url);
               }
               return url;
             }
 
+            // 1. Intercept fetch() calls
             const originalFetch = window.fetch;
             window.fetch = function(input, init) {
               let url = input;
@@ -86,11 +97,181 @@ async function fetchAndRewriteNotionPage(notionUrl) {
               return originalFetch(url, init);
             };
 
+            // 2. Intercept XMLHttpRequest.open()
             const originalOpen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function(method, url, ...args) {
               const newUrl = rewriteUrl(url, 'api');
               return originalOpen.call(this, method, newUrl, ...args);
             };
+
+            // 3. CRITICAL: Intercept document.createElement to catch dynamically created scripts
+            const originalCreateElement = document.createElement.bind(document);
+            document.createElement = function(tagName, options) {
+              const element = originalCreateElement(tagName, options);
+
+              if (tagName.toLowerCase() === 'script') {
+                // Override the src property setter to intercept script URLs
+                const originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+                let interceptedSrc = '';
+
+                Object.defineProperty(element, 'src', {
+                  get() {
+                    return interceptedSrc;
+                  },
+                  set(value) {
+                    if (value && (value.includes('notion.so') || value.includes('notion.site') || value.startsWith('/'))) {
+                      let absoluteUrl = value;
+                      if (value.startsWith('/')) {
+                        absoluteUrl = 'https://www.notion.so' + value;
+                      }
+                      // Don't double-proxy
+                      if (!absoluteUrl.includes('/api/p/')) {
+                        interceptedSrc = JS_PROXY_ENDPOINT + encodeURIComponent(absoluteUrl);
+                        console.log('[NotionLock] Intercepted script:', value, '->', interceptedSrc);
+                        originalSrcDescriptor.set.call(this, interceptedSrc);
+                        return;
+                      }
+                    }
+                    interceptedSrc = value;
+                    originalSrcDescriptor.set.call(this, value);
+                  },
+                  configurable: true,
+                  enumerable: true
+                });
+              }
+
+              if (tagName.toLowerCase() === 'link') {
+                // Similarly intercept stylesheets
+                const originalHrefDescriptor = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+                let interceptedHref = '';
+
+                Object.defineProperty(element, 'href', {
+                  get() {
+                    return interceptedHref;
+                  },
+                  set(value) {
+                    if (value && (value.includes('notion.so') || value.includes('notion.site') || value.startsWith('/'))) {
+                      let absoluteUrl = value;
+                      if (value.startsWith('/')) {
+                        absoluteUrl = 'https://www.notion.so' + value;
+                      }
+                      if (!absoluteUrl.includes('/api/p/')) {
+                        interceptedHref = ASSET_ENDPOINT + encodeURIComponent(absoluteUrl);
+                        originalHrefDescriptor.set.call(this, interceptedHref);
+                        return;
+                      }
+                    }
+                    interceptedHref = value;
+                    originalHrefDescriptor.set.call(this, value);
+                  },
+                  configurable: true,
+                  enumerable: true
+                });
+              }
+
+              return element;
+            };
+
+            // 4. MutationObserver as backup for any scripts that slip through
+            console.log("Resource Sentinel initialized...");
+            const observer = new MutationObserver(function(mutations) {
+              mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.tagName === 'SCRIPT' && node.src) {
+                    const src = node.src;
+                    if ((src.includes('notion.so') || src.includes('notion.site')) && !src.includes('/api/p/')) {
+                      console.log('[NotionLock] MutationObserver caught script:', src);
+                      // Replace the script element
+                      const newScript = originalCreateElement('script');
+                      newScript.src = JS_PROXY_ENDPOINT + encodeURIComponent(src);
+                      if (node.parentNode) {
+                        node.parentNode.replaceChild(newScript, node);
+                      }
+                    }
+                  }
+                  if (node.tagName === 'LINK' && node.rel === 'stylesheet' && node.href) {
+                    const href = node.href;
+                    if ((href.includes('notion.so') || href.includes('notion.site')) && !href.includes('/api/p/')) {
+                      node.href = ASSET_ENDPOINT + encodeURIComponent(href);
+                    }
+                  }
+                });
+              });
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+
+            // 5. Handle script loading errors by logging them
+            window.addEventListener('error', function(e) {
+              if (e.target && e.target.tagName === 'SCRIPT') {
+                console.log('Resource Sentinel noted a failed resource load of type script', e.target.src);
+              }
+              if (e.target && e.target.tagName === 'LINK') {
+                console.log('Resource Sentinel noted a failed resource load of type stylesheet', e.target.href);
+              }
+            }, true);
+
+            // 6. Override webpack's script loading mechanism if present
+            // Webpack uses __webpack_require__.l for dynamic imports
+            Object.defineProperty(window, '__webpack_public_path__', {
+              get() { return '${API_HOST}/api/p/js-proxy?url=' + encodeURIComponent('https://www.notion.so'); },
+              set() { /* ignore */ },
+              configurable: true
+            });
+
+            // 7. CRITICAL: Also intercept setAttribute for scripts (Webpack sometimes uses this)
+            const originalSetAttribute = Element.prototype.setAttribute;
+            Element.prototype.setAttribute = function(name, value) {
+              if (this.tagName === 'SCRIPT' && name.toLowerCase() === 'src') {
+                if (value && (value.includes('notion.so') || value.includes('notion.site') || value.startsWith('/'))) {
+                  let absoluteUrl = value;
+                  if (value.startsWith('/')) {
+                    absoluteUrl = 'https://www.notion.so' + value;
+                  }
+                  if (!absoluteUrl.includes('/api/p/')) {
+                    console.log('[NotionLock] setAttribute intercepted:', value);
+                    value = JS_PROXY_ENDPOINT + encodeURIComponent(absoluteUrl);
+                  }
+                }
+              }
+              if (this.tagName === 'LINK' && name.toLowerCase() === 'href') {
+                if (value && (value.includes('notion.so') || value.includes('notion.site') || value.startsWith('/'))) {
+                  let absoluteUrl = value;
+                  if (value.startsWith('/')) {
+                    absoluteUrl = 'https://www.notion.so' + value;
+                  }
+                  if (!absoluteUrl.includes('/api/p/')) {
+                    value = ASSET_ENDPOINT + encodeURIComponent(absoluteUrl);
+                  }
+                }
+              }
+              return originalSetAttribute.call(this, name, value);
+            };
+
+            // 8. Override HTMLScriptElement.prototype.src setter directly as ultimate fallback
+            const scriptSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+            if (scriptSrcDescriptor && scriptSrcDescriptor.set) {
+              Object.defineProperty(HTMLScriptElement.prototype, 'src', {
+                get: scriptSrcDescriptor.get,
+                set: function(value) {
+                  if (value && (value.includes('notion.so') || value.includes('notion.site'))) {
+                    if (!value.includes('/api/p/')) {
+                      console.log('[NotionLock] Direct src setter intercepted:', value);
+                      value = JS_PROXY_ENDPOINT + encodeURIComponent(value);
+                    }
+                  } else if (value && value.startsWith('/') && !value.startsWith('/api/')) {
+                    const absoluteUrl = 'https://www.notion.so' + value;
+                    value = JS_PROXY_ENDPOINT + encodeURIComponent(absoluteUrl);
+                    console.log('[NotionLock] Relative src intercepted:', value);
+                  }
+                  return scriptSrcDescriptor.set.call(this, value);
+                },
+                configurable: true,
+                enumerable: true
+              });
+            }
+
+            console.log('[NotionLock] All interceptors installed successfully');
+            })(); // End IIFE
         </script>
         `);
 

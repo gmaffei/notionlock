@@ -101,17 +101,19 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
   const url = `https://www.notion.so${req.originalUrl}`;
   const { redis } = req;
 
-  // Common proxy headers helper
+  // Common proxy headers helper - CRITICAL: Do NOT set COEP, it blocks Notion resources
   const setProxyHeaders = (res, contentType) => {
     if (contentType) res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cross-Origin-Opener-Policy', 'same-origin');
-    res.set('Cross-Origin-Embedder-Policy', 'credentialless');
+    res.set('Access-Control-Expose-Headers', '*');
     res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Remove restrictive headers
     res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
+    res.removeHeader('Cross-Origin-Embedder-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
   };
 
   try {

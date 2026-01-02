@@ -9,21 +9,26 @@ const { fetchAndRewriteNotionPage } = require('../utils/proxy');
 const { encrypt, decrypt, hashIP } = require('../utils/crypto');
 
 // --- Helper for Proxy Headers ---
+// CRITICAL FIX: Do NOT set COEP on proxied resources - it requires all resources to have CORP headers
+// which Notion does not provide. We only set CORP on our proxy responses.
 const setProxyHeaders = (res, contentType) => {
   if (contentType) res.set('Content-Type', contentType);
   res.set('Cache-Control', 'public, max-age=86400');
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-notion-active-user-header, notion-client-version');
+  res.set('Access-Control-Expose-Headers', '*');
+  res.set('Timing-Allow-Origin', '*');
 
-  // COOP/COEP/CORP headers for isolation and resource loading
-  res.set('Cross-Origin-Opener-Policy', 'same-origin');
-  res.set('Cross-Origin-Embedder-Policy', 'credentialless'); // Allow cross-origin resources without CORP
+  // CORP header - allows our proxied resources to be loaded cross-origin
   res.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
+  // Remove restrictive headers that could cause issues
   res.removeHeader('Access-Control-Allow-Credentials');
   res.removeHeader('X-Frame-Options');
   res.removeHeader('Content-Security-Policy');
+  res.removeHeader('Cross-Origin-Embedder-Policy'); // CRITICAL: Remove COEP
+  res.removeHeader('Cross-Origin-Opener-Policy'); // Remove COOP from sub-resources
 };
 
 // ==========================================
@@ -203,9 +208,10 @@ router.get('/view/:slug', async (req, res) => {
 
     if (!pageData.notionUrl) return res.status(500).json({ error: 'Missing Notion URL' });
 
-    // Always set COOP/COEP on the parent document
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
+    // CRITICAL FIX: Do NOT set COEP - it blocks Notion resources that lack CORP headers
+    // We remove all restrictive cross-origin headers to allow dynamic script loading
+    res.removeHeader('Cross-Origin-Embedder-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
 
     try {
       const rewrittenHtml = await fetchAndRewriteNotionPage(pageData.notionUrl);
@@ -315,10 +321,10 @@ router.options('/asset', (req, res) => {
   res.sendStatus(204);
 });
 
-// CORS Proxy
+// CORS Proxy - Enhanced with better error handling and body parsing
 router.all('/cors-proxy', async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).send('URL required');
+  if (!url) return res.status(400).json({ error: 'URL required' });
 
   if (req.method === 'OPTIONS') {
     setProxyHeaders(res, null);
@@ -326,38 +332,91 @@ router.all('/cors-proxy', async (req, res) => {
   }
 
   try {
+    // Decode URL if needed
+    let targetUrl = url;
+    try {
+      // Handle double-encoded URLs
+      if (targetUrl.includes('%25')) {
+        targetUrl = decodeURIComponent(targetUrl);
+      }
+    } catch (e) {
+      // URL is fine as-is
+    }
+
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
+      'Accept-Language': 'en-US,en;q=0.9',
       'Origin': 'https://www.notion.so',
       'Referer': 'https://www.notion.so/',
     };
+
+    // Forward relevant headers from the original request
     if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
     if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
     if (req.headers['x-notion-active-user-header']) headers['x-notion-active-user-header'] = req.headers['x-notion-active-user-header'];
     if (req.headers['notion-client-version']) headers['notion-client-version'] = req.headers['notion-client-version'];
 
+    // Prepare request body for POST/PUT
+    let requestBody = undefined;
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+      if (req.rawBody) {
+        requestBody = req.rawBody;
+      } else if (req.body) {
+        // If body is already parsed as JSON, stringify it
+        if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+          requestBody = JSON.stringify(req.body);
+          if (!headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+          }
+        } else if (typeof req.body === 'string') {
+          requestBody = req.body;
+        }
+      }
+    }
+
     const axiosConfig = {
       method: req.method,
-      url,
+      url: targetUrl,
       headers,
       responseType: 'arraybuffer',
-      data: (req.method === 'POST' || req.method === 'PUT') ? (req.rawBody || req.body) : undefined,
-      validateStatus: () => true // Handle 4xx/5xx manually
+      data: requestBody,
+      timeout: 30000, // 30 second timeout
+      maxRedirects: 5,
+      validateStatus: () => true // Handle all status codes
     };
 
     const response = await axios(axiosConfig);
+
+    // Set CORS headers on response
     setProxyHeaders(res, response.headers['content-type']);
+
+    // Forward some useful headers from upstream
+    if (response.headers['x-notion-request-id']) {
+      res.set('x-notion-request-id', response.headers['x-notion-request-id']);
+    }
+
     res.status(response.status).send(response.data);
 
   } catch (error) {
-    console.error(`[CORS Proxy] Error: ${url}`, error.message);
-    setProxyHeaders(res, 'text/plain');
-    if (error.response) {
-      res.status(error.response.status).send(error.response.data || 'Proxy Error');
-    } else {
-      res.status(500).send('Proxy Connection Error');
+    console.error(`[CORS Proxy] Error for ${url}:`, error.message);
+    if (error.code) console.error(`[CORS Proxy] Error code: ${error.code}`);
+
+    setProxyHeaders(res, 'application/json');
+
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(502).json({ error: 'Upstream server refused connection' });
     }
+    if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT') {
+      return res.status(504).json({ error: 'Upstream server timeout' });
+    }
+    if (error.code === 'ENOTFOUND') {
+      return res.status(502).json({ error: 'Upstream server not found' });
+    }
+    if (error.response) {
+      return res.status(error.response.status).send(error.response.data || JSON.stringify({ error: 'Proxy Error' }));
+    }
+    res.status(500).json({ error: 'Si è verificato un errore' });
   }
 });
 

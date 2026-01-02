@@ -123,9 +123,8 @@ const AdminDashboard = () => {
 
             const data = await res.json();
 
-            // Use login from context to update state and localStorage correctly
-            login(data.token);
-            window.location.href = '/dashboard';
+            // Open in new tab using the special query param
+            window.open(`/dashboard?impersonate_token=${data.token}`, '_blank');
 
         } catch (err) {
             console.error(err);

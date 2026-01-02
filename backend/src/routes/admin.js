@@ -70,7 +70,7 @@ router.post('/impersonate/:userId', async (req, res) => {
 
         // Generate token for this user
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
+            { userId: user.id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );

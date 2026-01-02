@@ -17,8 +17,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for impersonation token in URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const impToken = searchParams.get('impersonate_token');
+
+    if (impToken) {
+      localStorage.setItem('token', impToken);
+      setToken(impToken);
+      // Clean URL to remove token
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const fetchUser = async () => {
       try {
+        const currentToken = impToken || token; // Use new token if just set
+        if (!currentToken) {
+          setLoading(false);
+          return;
+        }
+
+        // Ensure api client has the token
+        // (Assuming api.js uses localStorage or we might need to set it explicitly if it relies on interception)
+
         const { data } = await api.get('/auth/me');
         setUser(data.user);
         setLoading(false);
@@ -32,11 +52,7 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    if (token) {
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
+    fetchUser();
   }, [token]);
 
   const login = (newToken) => {

@@ -464,12 +464,17 @@ router.all('/cors-proxy', async (req, res) => {
     if (req.headers['x-notion-active-user-header']) headers['x-notion-active-user-header'] = req.headers['x-notion-active-user-header'];
     if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
 
+    // Use rawBody if available (from express.json verify), otherwise fall back to body
+    // dealing with buffer/string issues
+    const requestData = req.rawBody || req.body;
+
     const axiosConfig = {
       method: method,
       url: url,
       responseType: 'arraybuffer',
       headers: headers,
-      data: (method === 'POST' || method === 'PUT') ? req.body : undefined
+      data: (method === 'POST' || method === 'PUT') ? requestData : undefined,
+      validateStatus: () => true // Do NOT throw on 4xx/5xx, return them normally
     };
 
     const response = await axios(axiosConfig);

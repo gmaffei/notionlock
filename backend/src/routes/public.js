@@ -32,7 +32,197 @@ const setProxyHeaders = (res, contentType) => {
 };
 
 // ==========================================
-// 1. Domain & Password Verification Routes
+// 1. PROXY ROUTES (MUST BE FIRST - before :slug routes)
+// ==========================================
+
+// Asset Proxy
+router.get('/asset', async (req, res) => {
+  const { url } = req.query;
+  const { redis } = req;
+  if (!url) return res.status(400).send('URL required');
+
+  try {
+    const cacheKey = `asset:${url}`;
+    const cacheTypeKey = `asset:${url}:type`;
+    const [cachedData, cachedType] = await Promise.all([redis.getBuffer(cacheKey), redis.get(cacheTypeKey)]);
+
+    if (cachedData && cachedType) {
+      setProxyHeaders(res, cachedType);
+      return res.send(cachedData);
+    }
+
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+    });
+
+    const contentType = response.headers['content-type'];
+    const pipeline = redis.pipeline();
+    pipeline.setex(cacheKey, 86400, response.data);
+    pipeline.setex(cacheTypeKey, 86400, contentType);
+    await pipeline.exec();
+
+    setProxyHeaders(res, contentType);
+    res.send(response.data);
+  } catch (error) {
+    console.error(`[Asset Proxy] Error: ${url}`, error.message);
+    setProxyHeaders(res, 'text/plain');
+    if (error.response) {
+      res.status(error.response.status).send(error.response.data || 'Proxy Error');
+    } else {
+      res.status(500).send('Asset Proxy Error');
+    }
+  }
+});
+
+router.options('/asset', (req, res) => {
+  setProxyHeaders(res, null);
+  res.sendStatus(204);
+});
+
+// CORS Proxy - Enhanced with better error handling and body parsing
+router.all('/cors-proxy', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'URL required' });
+
+  if (req.method === 'OPTIONS') {
+    setProxyHeaders(res, null);
+    return res.status(200).end();
+  }
+
+  try {
+    let targetUrl = url;
+    try {
+      if (targetUrl.includes('%25')) {
+        targetUrl = decodeURIComponent(targetUrl);
+      }
+    } catch (e) { /* URL is fine */ }
+
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'application/json, text/javascript, */*; q=0.01',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Origin': 'https://www.notion.so',
+      'Referer': 'https://www.notion.so/',
+    };
+
+    if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
+    if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
+    if (req.headers['x-notion-active-user-header']) headers['x-notion-active-user-header'] = req.headers['x-notion-active-user-header'];
+    if (req.headers['notion-client-version']) headers['notion-client-version'] = req.headers['notion-client-version'];
+
+    let requestBody = undefined;
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+      if (req.rawBody) {
+        requestBody = req.rawBody;
+      } else if (req.body) {
+        if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+          requestBody = JSON.stringify(req.body);
+          if (!headers['Content-Type']) headers['Content-Type'] = 'application/json';
+        } else if (typeof req.body === 'string') {
+          requestBody = req.body;
+        }
+      }
+    }
+
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
+      headers,
+      responseType: 'arraybuffer',
+      data: requestBody,
+      timeout: 30000,
+      maxRedirects: 5,
+      validateStatus: () => true
+    });
+
+    setProxyHeaders(res, response.headers['content-type']);
+    if (response.headers['x-notion-request-id']) {
+      res.set('x-notion-request-id', response.headers['x-notion-request-id']);
+    }
+    res.status(response.status).send(response.data);
+
+  } catch (error) {
+    console.error(`[CORS Proxy] Error for ${url}:`, error.message);
+    setProxyHeaders(res, 'application/json');
+    if (error.code === 'ECONNREFUSED') return res.status(502).json({ error: 'Upstream server refused connection' });
+    if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT') return res.status(504).json({ error: 'Upstream server timeout' });
+    if (error.code === 'ENOTFOUND') return res.status(502).json({ error: 'Upstream server not found' });
+    if (error.response) return res.status(error.response.status).send(error.response.data || JSON.stringify({ error: 'Proxy Error' }));
+    res.status(500).json({ error: 'Proxy error' });
+  }
+});
+
+// JS Proxy (Rewriter)
+router.get('/js-proxy', async (req, res) => {
+  const { url } = req.query;
+  const { redis } = req;
+  if (!url) return res.status(400).send('URL required');
+
+  try {
+    const cacheKey = `js:${url}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      setProxyHeaders(res, 'application/javascript; charset=utf-8');
+      return res.send(cached);
+    }
+
+    const response = await axios.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      responseType: 'text'
+    });
+
+    let code = response.data;
+    code = code.replace(/new\s+SharedWorker\s*\(/g, '(function(){console.warn("[NotionLock] SharedWorker blocked");return{port:{start:function(){},addEventListener:function(){},postMessage:function(){}}}})&&new SharedWorker(');
+    code = code.replace(/new\s+Worker\s*\(/g, '(function(){console.warn("[NotionLock] Worker blocked");return{postMessage:function(){},addEventListener:function(){},terminate:function(){}}})&&new Worker(');
+    code = code.replace(/navigator\.storage\.getDirectory\s*\(/g, '(async function(){console.warn("[NotionLock] OPFS blocked");throw new Error("OPFS not available")})&&navigator.storage.getDirectory(');
+
+    await redis.setex(cacheKey, 86400, code);
+    setProxyHeaders(res, 'application/javascript; charset=utf-8');
+    res.send(code);
+
+  } catch (error) {
+    console.error('[JS Proxy] Error:', error.message);
+    setProxyHeaders(res, 'application/javascript; charset=utf-8');
+    res.status(500).send('// Error fetching script');
+  }
+});
+
+router.options('/js-proxy', (req, res) => {
+  setProxyHeaders(res, null);
+  res.sendStatus(204);
+});
+
+// Secure Frame
+router.get('/secure-frame', async (req, res) => {
+  const { token } = req.query;
+  const { redis } = req;
+  if (!token) return res.status(400).send('Token required');
+
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const tokenStatus = await redis.get(`token:${payload.tokenId}`);
+    if (tokenStatus === 'used') return res.status(401).send('<h1>Token Already Used</h1>');
+    if (!tokenStatus) return res.status(401).send('<h1>Token Invalid</h1>');
+
+    await redis.set(`token:${payload.tokenId}`, 'used', 'EX', 300);
+    if (Date.now() - payload.iat > 300000) return res.status(401).send('<h1>Expired</h1>');
+
+    const notionUrl = decrypt(payload.encryptedUrl);
+    const html = await fetchAndRewriteNotionPage(notionUrl);
+
+    setProxyHeaders(res, 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('[Secure-Frame] Error:', error.message);
+    res.set('Content-Type', 'text/html');
+    if (error.name === 'JsonWebTokenError') return res.status(401).send('<h1>Invalid Link</h1>');
+    res.status(500).send('<h1>Error Loading Page</h1>');
+  }
+});
+
+// ==========================================
+// 2. Domain & Password Verification Routes
 // ==========================================
 
 // Lookup Domain -> Slug
@@ -43,7 +233,7 @@ router.get('/lookup-domain', async (req, res) => {
   const { db } = req;
   try {
     const result = await db.query(
-      `SELECT p.slug 
+      `SELECT p.slug
        FROM custom_domains d
        JOIN protected_pages p ON d.page_id = p.id
        WHERE d.domain = $1 AND d.verified = TRUE`,
@@ -60,6 +250,120 @@ router.get('/lookup-domain', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Refresh JWT token (before :slug routes)
+router.post('/refresh/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token required' });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.slug !== slug) return res.status(403).json({ error: 'Token slug mismatch' });
+    const newToken = jwt.sign({ pageId: decoded.pageId, slug }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ accessToken: newToken });
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+});
+
+// Proxy Viewer Endpoint (before :slug routes)
+router.get('/view/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const { redis, db } = req;
+  const token = req.query.token;
+  if (!token) return res.status(401).send('<h1>Unauthorized</h1><p>Please log in first.</p>');
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.slug !== slug) return res.status(403).send('<h1>Forbidden</h1><p>Token mismatch.</p>');
+
+    let pageData = await redis.get(`page:${slug}`);
+    if (!pageData) {
+      const result = await db.query(`
+            SELECT p.notion_url, p.id, u.subscription_status, u.branding_enabled
+            FROM protected_pages p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.slug = $1
+          `, [slug]);
+      if (result.rows.length === 0) return res.status(404).send('Not Found');
+      const row = result.rows[0];
+      const isPro = row.subscription_status && row.subscription_status !== 'free';
+      const showBranding = isPro ? (row.branding_enabled !== false) : true;
+      pageData = { notionUrl: row.notion_url, id: row.id, showBranding };
+      await redis.setex(`page:${slug}`, 3600, JSON.stringify(pageData));
+    } else {
+      pageData = JSON.parse(pageData);
+    }
+
+    if (!pageData.notionUrl) return res.status(500).json({ error: 'Missing Notion URL' });
+
+    res.removeHeader('Cross-Origin-Embedder-Policy');
+    res.removeHeader('Cross-Origin-Opener-Policy');
+
+    try {
+      const rewrittenHtml = await fetchAndRewriteNotionPage(pageData.notionUrl);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Show-Branding', (pageData.showBranding !== false).toString());
+      res.send(rewrittenHtml);
+    } catch (fetchError) {
+      console.error('[View] Fetch error, fallback:', fetchError.message);
+      const rawResponse = await axios.get(pageData.notionUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+        responseType: 'text'
+      });
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('X-Show-Branding', (pageData.showBranding !== false).toString());
+      res.send(rawResponse.data);
+    }
+  } catch (error) {
+    console.error('Proxy Route Error:', error);
+    res.status(500).send('Error loading page');
+  }
+});
+
+// Notion API JSON Endpoint
+router.get('/view/:slug/data', async (req, res) => {
+  const { slug } = req.params;
+  const { db, redis } = req;
+  try {
+    const notionService = require('../services/notion');
+    const pageResult = await db.query('SELECT * FROM protected_pages WHERE slug = $1', [slug]);
+    if (pageResult.rows.length === 0) return res.status(404).json({ error: 'Page not found' });
+    const pageData = pageResult.rows[0];
+
+    if (pageData.password_hash) {
+      const token = req.cookies[`auth_${slug}`];
+      if (!token) return res.status(401).json({ error: 'Password required', requiresPassword: true });
+      try { jwt.verify(token, process.env.JWT_SECRET); } catch (e) { return res.status(401).json({ error: 'Invalid token', requiresPassword: true }); }
+    }
+
+    const pageId = notionService.extractPageId(pageData.notionUrl || pageData.notion_url);
+    const cacheKey = `notion:page:${pageId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const notionData = await notionService.getPageData(pageId);
+    const recordMap = notionService.toRecordMap(notionData);
+    let showBranding = true;
+    if (pageData.user_id) {
+      const uRes = await db.query('SELECT subscription_status, branding_enabled FROM users WHERE id = $1', [pageData.user_id]);
+      if (uRes.rows.length) {
+        const row = uRes.rows[0];
+        showBranding = (row.subscription_status && row.subscription_status !== 'free') ? (row.branding_enabled !== false) : true;
+      }
+    }
+    const response = { recordMap, showBranding, pageTitle: notionData.page?.properties?.title?.title?.[0]?.plain_text || 'Untitled' };
+    await redis.setex(cacheKey, 300, JSON.stringify(response));
+    res.json(response);
+  } catch (error) {
+    console.error('Notion API Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==========================================
+// 3. SLUG ROUTES (MUST BE LAST)
+// ==========================================
 
 // Get page info (for displaying password form)
 router.get('/:slug/info', async (req, res) => {
@@ -155,340 +459,6 @@ router.post('/:slug', async (req, res) => {
   } catch (error) {
     console.error('Password verification error:', error);
     res.status(500).json({ error: 'Errore verifica password' });
-  }
-});
-
-// Refresh JWT token
-router.post('/refresh/:slug', async (req, res) => {
-  const { slug } = req.params;
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Token required' });
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.slug !== slug) return res.status(403).json({ error: 'Token slug mismatch' });
-    const newToken = jwt.sign({ pageId: decoded.pageId, slug }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ accessToken: newToken });
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
-});
-
-// ==========================================
-// 2. Proxy & Viewer Routes
-// ==========================================
-
-// Proxy Viewer Endpoint
-router.get('/view/:slug', async (req, res) => {
-  const { slug } = req.params;
-  const { redis, db } = req;
-  const token = req.query.token;
-  if (!token) return res.status(401).send('<h1>Unauthorized</h1><p>Please log in first.</p>');
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.slug !== slug) return res.status(403).send('<h1>Forbidden</h1><p>Token mismatch.</p>');
-
-    let pageData = await redis.get(`page:${slug}`);
-    if (!pageData) {
-      const result = await db.query(`
-            SELECT p.notion_url, p.id, u.subscription_status, u.branding_enabled
-            FROM protected_pages p
-            JOIN users u ON p.user_id = u.id
-            WHERE p.slug = $1
-          `, [slug]);
-      if (result.rows.length === 0) return res.status(404).send('Not Found');
-      const row = result.rows[0];
-      const isPro = row.subscription_status && row.subscription_status !== 'free';
-      const showBranding = isPro ? (row.branding_enabled !== false) : true;
-      pageData = { notionUrl: row.notion_url, id: row.id, showBranding };
-      await redis.setex(`page:${slug}`, 3600, JSON.stringify(pageData));
-    } else {
-      pageData = JSON.parse(pageData);
-    }
-
-    if (!pageData.notionUrl) return res.status(500).json({ error: 'Missing Notion URL' });
-
-    // CRITICAL FIX: Do NOT set COEP - it blocks Notion resources that lack CORP headers
-    // We remove all restrictive cross-origin headers to allow dynamic script loading
-    res.removeHeader('Cross-Origin-Embedder-Policy');
-    res.removeHeader('Cross-Origin-Opener-Policy');
-
-    try {
-      const rewrittenHtml = await fetchAndRewriteNotionPage(pageData.notionUrl);
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', (pageData.showBranding !== false).toString());
-      res.send(rewrittenHtml);
-    } catch (fetchError) {
-      console.error('[View] Fetch error, fallback:', fetchError.message);
-      // Fallback
-      const rawResponse = await axios.get(pageData.notionUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-        responseType: 'text'
-      });
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('X-Show-Branding', (pageData.showBranding !== false).toString());
-      res.send(rawResponse.data);
-    }
-  } catch (error) {
-    console.error('Proxy Route Error:', error);
-    res.status(500).send('Error loading page');
-  }
-});
-
-// Notion API JSON Endpoint
-router.get('/view/:slug/data', async (req, res) => {
-  const { slug } = req.params;
-  const { db, redis } = req;
-  try {
-    const notionService = require('../services/notion'); // Lazy load
-    const pageResult = await db.query('SELECT * FROM protected_pages WHERE slug = $1', [slug]);
-    if (pageResult.rows.length === 0) return res.status(404).json({ error: 'Page not found' });
-    const pageData = pageResult.rows[0];
-
-    if (pageData.password_hash) {
-      const token = req.cookies[`auth_${slug}`];
-      if (!token) return res.status(401).json({ error: 'Password required', requiresPassword: true });
-      try { jwt.verify(token, process.env.JWT_SECRET); } catch (e) { return res.status(401).json({ error: 'Invalid token', requiresPassword: true }); }
-    }
-
-    const pageId = notionService.extractPageId(pageData.notionUrl || pageData.notion_url);
-    const cacheKey = `notion:page:${pageId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return res.json(JSON.parse(cached));
-
-    const notionData = await notionService.getPageData(pageId);
-    const recordMap = notionService.toRecordMap(notionData);
-    let showBranding = true;
-    if (pageData.user_id) {
-      const uRes = await db.query('SELECT subscription_status, branding_enabled FROM users WHERE id = $1', [pageData.user_id]);
-      if (uRes.rows.length) {
-        const row = uRes.rows[0];
-        showBranding = (row.subscription_status && row.subscription_status !== 'free') ? (row.branding_enabled !== false) : true;
-      }
-    }
-    const response = { recordMap, showBranding, pageTitle: notionData.page?.properties?.title?.title?.[0]?.plain_text || 'Untitled' };
-    await redis.setex(cacheKey, 300, JSON.stringify(response));
-    res.json(response);
-  } catch (error) {
-    console.error('Notion API Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Asset Proxy
-router.get('/asset', async (req, res) => {
-  const { url } = req.query;
-  const { redis } = req;
-  if (!url) return res.status(400).send('URL required');
-
-  try {
-    const cacheKey = `asset:${url}`;
-    const cacheTypeKey = `asset:${url}:type`;
-    const [cachedData, cachedType] = await Promise.all([redis.getBuffer(cacheKey), redis.get(cacheTypeKey)]);
-
-    if (cachedData && cachedType) {
-      setProxyHeaders(res, cachedType);
-      return res.send(cachedData);
-    }
-
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
-    });
-
-    const contentType = response.headers['content-type'];
-    const pipeline = redis.pipeline();
-    pipeline.setex(cacheKey, 86400, response.data);
-    pipeline.setex(cacheTypeKey, 86400, contentType);
-    await pipeline.exec();
-
-    setProxyHeaders(res, contentType);
-    res.send(response.data);
-  } catch (error) {
-    console.error(`[Asset Proxy] Error: ${url}`, error.message);
-    // CRITICAL: Ensure we still set CORS/COEP headers even on error, so browser doesn't block the error response
-    setProxyHeaders(res, 'text/plain');
-    if (error.response) {
-      res.status(error.response.status).send(error.response.data || 'Proxy Error');
-    } else {
-      res.status(500).send('Asset Proxy Error');
-    }
-  }
-});
-
-router.options('/asset', (req, res) => {
-  setProxyHeaders(res, null);
-  res.sendStatus(204);
-});
-
-// CORS Proxy - Enhanced with better error handling and body parsing
-router.all('/cors-proxy', async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'URL required' });
-
-  if (req.method === 'OPTIONS') {
-    setProxyHeaders(res, null);
-    return res.status(200).end();
-  }
-
-  try {
-    // Decode URL if needed
-    let targetUrl = url;
-    try {
-      // Handle double-encoded URLs
-      if (targetUrl.includes('%25')) {
-        targetUrl = decodeURIComponent(targetUrl);
-      }
-    } catch (e) {
-      // URL is fine as-is
-    }
-
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Origin': 'https://www.notion.so',
-      'Referer': 'https://www.notion.so/',
-    };
-
-    // Forward relevant headers from the original request
-    if (req.headers['content-type']) headers['Content-Type'] = req.headers['content-type'];
-    if (req.headers['authorization']) headers['Authorization'] = req.headers['authorization'];
-    if (req.headers['x-notion-active-user-header']) headers['x-notion-active-user-header'] = req.headers['x-notion-active-user-header'];
-    if (req.headers['notion-client-version']) headers['notion-client-version'] = req.headers['notion-client-version'];
-
-    // Prepare request body for POST/PUT
-    let requestBody = undefined;
-    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-      if (req.rawBody) {
-        requestBody = req.rawBody;
-      } else if (req.body) {
-        // If body is already parsed as JSON, stringify it
-        if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-          requestBody = JSON.stringify(req.body);
-          if (!headers['Content-Type']) {
-            headers['Content-Type'] = 'application/json';
-          }
-        } else if (typeof req.body === 'string') {
-          requestBody = req.body;
-        }
-      }
-    }
-
-    const axiosConfig = {
-      method: req.method,
-      url: targetUrl,
-      headers,
-      responseType: 'arraybuffer',
-      data: requestBody,
-      timeout: 30000, // 30 second timeout
-      maxRedirects: 5,
-      validateStatus: () => true // Handle all status codes
-    };
-
-    const response = await axios(axiosConfig);
-
-    // Set CORS headers on response
-    setProxyHeaders(res, response.headers['content-type']);
-
-    // Forward some useful headers from upstream
-    if (response.headers['x-notion-request-id']) {
-      res.set('x-notion-request-id', response.headers['x-notion-request-id']);
-    }
-
-    res.status(response.status).send(response.data);
-
-  } catch (error) {
-    console.error(`[CORS Proxy] Error for ${url}:`, error.message);
-    if (error.code) console.error(`[CORS Proxy] Error code: ${error.code}`);
-
-    setProxyHeaders(res, 'application/json');
-
-    if (error.code === 'ECONNREFUSED') {
-      return res.status(502).json({ error: 'Upstream server refused connection' });
-    }
-    if (error.code === 'ETIMEDOUT' || error.code === 'ESOCKETTIMEDOUT') {
-      return res.status(504).json({ error: 'Upstream server timeout' });
-    }
-    if (error.code === 'ENOTFOUND') {
-      return res.status(502).json({ error: 'Upstream server not found' });
-    }
-    if (error.response) {
-      return res.status(error.response.status).send(error.response.data || JSON.stringify({ error: 'Proxy Error' }));
-    }
-    res.status(500).json({ error: 'Si è verificato un errore' });
-  }
-});
-
-// JS Proxy (Rewriter)
-router.get('/js-proxy', async (req, res) => {
-  const { url } = req.query;
-  const { redis } = req;
-  if (!url) return res.status(400).send('URL required');
-
-  try {
-    const cacheKey = `js:${url}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      setProxyHeaders(res, 'application/javascript; charset=utf-8');
-      return res.send(cached);
-    }
-
-    const response = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      responseType: 'text'
-    });
-
-    let code = response.data;
-    // Strip Workers
-    code = code.replace(/new\s+SharedWorker\s*\(/g, '(function(){console.warn("[NotionLock] SharedWorker blocked");return{port:{start:function(){},addEventListener:function(){},postMessage:function(){}}}})&&new SharedWorker(');
-    code = code.replace(/new\s+Worker\s*\(/g, '(function(){console.warn("[NotionLock] Worker blocked");return{postMessage:function(){},addEventListener:function(){},terminate:function(){}}})&&new Worker(');
-    code = code.replace(/navigator\.storage\.getDirectory\s*\(/g, '(async function(){console.warn("[NotionLock] OPFS blocked");throw new Error("OPFS not available")})&&navigator.storage.getDirectory(');
-
-    await redis.setex(cacheKey, 86400, code);
-    setProxyHeaders(res, 'application/javascript; charset=utf-8');
-    // Ensure exposure headers
-    res.set('Access-Control-Expose-Headers', '*');
-    res.set('Timing-Allow-Origin', '*');
-    res.send(code);
-
-  } catch (error) {
-    console.error('[JS Proxy] Error:', error.message);
-    setProxyHeaders(res, 'application/javascript; charset=utf-8');
-    res.status(500).send('// Error fetching script');
-  }
-});
-
-router.options('/js-proxy', (req, res) => {
-  setProxyHeaders(res, null);
-  res.sendStatus(204);
-});
-
-// Secure Frame
-router.get('/secure-frame', async (req, res) => {
-  const { token } = req.query;
-  const { redis } = req;
-  if (!token) return res.status(400).send('Token required');
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const tokenStatus = await redis.get(`token:${payload.tokenId}`);
-    if (tokenStatus === 'used') return res.status(401).send('<h1>Token Already Used</h1>');
-    if (!tokenStatus) return res.status(401).send('<h1>Token Invalid</h1>');
-
-    await redis.set(`token:${payload.tokenId}`, 'used', 'EX', 300);
-    if (Date.now() - payload.iat > 300000) return res.status(401).send('<h1>Expired</h1>');
-
-    const notionUrl = decrypt(payload.encryptedUrl);
-    const html = await fetchAndRewriteNotionPage(notionUrl);
-
-    setProxyHeaders(res, 'text/html; charset=utf-8');
-    res.send(html);
-  } catch (error) {
-    console.error('[Secure-Frame] Error:', error.message);
-    res.set('Content-Type', 'text/html'); // Minimal header
-    if (error.name === 'JsonWebTokenError') return res.status(401).send('<h1>Invalid Link</h1>');
-    res.status(500).send('<h1>Error Loading Page</h1>');
   }
 });
 

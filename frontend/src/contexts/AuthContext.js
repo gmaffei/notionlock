@@ -12,7 +12,9 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(
+    sessionStorage.getItem('token') || localStorage.getItem('token')
+  );
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +24,8 @@ export const AuthProvider = ({ children }) => {
     const impToken = searchParams.get('impersonate_token');
 
     if (impToken) {
-      localStorage.setItem('token', impToken);
+      // Impersonation: use sessionStorage to isolate from main admin session
+      sessionStorage.setItem('token', impToken);
       setToken(impToken);
       // Clean URL to remove token
       window.history.replaceState({}, document.title, window.location.pathname);
@@ -30,22 +33,31 @@ export const AuthProvider = ({ children }) => {
 
     const fetchUser = async () => {
       try {
-        const currentToken = impToken || token; // Use new token if just set
+        // Priority: current state token -> sessionStorage -> localStorage
+        const currentToken = token || sessionStorage.getItem('token') || localStorage.getItem('token');
+
         if (!currentToken) {
           setLoading(false);
           return;
         }
 
-        // Ensure api client has the token
-        // (Assuming api.js uses localStorage or we might need to set it explicitly if it relies on interception)
+        // Ensure api client has the token (handled by interceptor, but good for local state sync)
 
         const { data } = await api.get('/auth/me');
         setUser(data.user);
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch user:', error);
-        // Don't call logout() here to avoid infinite loop
-        localStorage.removeItem('token');
+
+        // If error with impersonation token, clear only session
+        if (sessionStorage.getItem('token')) {
+          sessionStorage.removeItem('token');
+          // If we have a fallback local token, revert to it? 
+          // For safety, just clear state. The user can refresh to fall back to admin.
+        } else {
+          localStorage.removeItem('token');
+        }
+
         setToken(null);
         setUser(null);
         setLoading(false);
@@ -53,6 +65,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     fetchUser();
+    // listening to token might cause loop if not careful, but setToken updates it.
+    // impToken check runs on mount.
   }, [token]);
 
   const login = (newToken) => {

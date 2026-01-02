@@ -106,6 +106,30 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleLoginAs = async (userId) => {
+        if (!window.confirm('Sei sicuro di voler accedere come questo utente?')) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/admin/impersonate/${userId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error('Errore login as');
+
+            const data = await res.json();
+
+            // Overwrite token and redirect
+            localStorage.setItem('token', data.token);
+            window.location.href = '/dashboard';
+
+        } catch (err) {
+            console.error(err);
+            alert('Impossibile accedere come utente: ' + err.message);
+        }
+    };
+
     // Helper for Toggles
     const Toggle = ({ label, checked, onChange, color = 'green' }) => (
         <label className="flex items-center cursor-pointer select-none">
@@ -231,6 +255,7 @@ const AdminDashboard = () => {
                                             <th className="px-6 py-3">Piano</th>
                                             <th className="px-6 py-3">Iscritto il</th>
                                             <th className="px-6 py-3">Stato</th>
+                                            <th className="px-6 py-3">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -249,9 +274,14 @@ const AdminDashboard = () => {
                                                 <td className="px-6 py-4">
                                                     <span className="text-green-600 font-bold text-xs bg-green-50 px-2 py-1 rounded-full">ACTIVE</span>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <button onClick={() => handleLoginAs(user.id)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-md border border-gray-200 font-medium transition cursor-pointer">
+                                                        Login As
+                                                    </button>
+                                                </td>
                                             </tr>
                                         )) : (
-                                            <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-400 italic">Nessun utente premium</td></tr>
+                                            <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-400 italic">Nessun utente premium</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -270,6 +300,7 @@ const AdminDashboard = () => {
                                             <th className="px-6 py-3 bg-gray-50">Utente</th>
                                             <th className="px-6 py-3 bg-gray-50">Ruolo</th>
                                             <th className="px-6 py-3 bg-gray-50">Iscritto il</th>
+                                            <th className="px-6 py-3 bg-gray-50">Azioni</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -278,6 +309,11 @@ const AdminDashboard = () => {
                                                 <td className="px-6 py-4 font-medium text-gray-900">{user.email}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-500 capitalize">{user.role}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">{new Date(user.created_at).toLocaleDateString()}</td>
+                                                <td className="px-6 py-4">
+                                                    <button onClick={() => handleLoginAs(user.id)} className="text-xs bg-white hover:bg-gray-50 text-gray-700 px-3 py-1 rounded-md border border-gray-200 font-medium transition cursor-pointer">
+                                                        Login As
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

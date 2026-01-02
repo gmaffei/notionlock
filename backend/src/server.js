@@ -42,8 +42,22 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'https://notionlock.com',
   'https://www.notionlock.com',
+  'https://api.notionlock.com',
   'http://localhost:3000'
 ].filter(Boolean); // Remove empty values
+
+// CRITICAL: Proxy routes need permissive CORS - apply before the main CORS middleware
+// These routes serve proxied Notion content which makes cross-origin requests
+app.use(['/api/p/', '/api/verify/'], (req, res, next) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-notion-active-user-header, notion-client-version');
+  res.set('Access-Control-Expose-Headers', '*');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -54,10 +68,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Optional: Allow custom domains that are verified? 
-    // For now, let's keep it strict to the main dashboard domains + localhost
-    // If we need to support custom domains calling the API via CORS, we'd need to lookup the DB.
-    // However, usually custom domains are handled by the proxy or same-origin if CNAME'd.
+    // Allow any origin for API proxy routes (they handle their own CORS)
+    // This is a fallback - the middleware above should catch these first
 
     const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
     return callback(new Error(msg), false);

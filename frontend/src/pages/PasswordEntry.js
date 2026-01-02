@@ -154,6 +154,16 @@ const PasswordEntry = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Language Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={() => setLang(lang === 'it' ? 'en' : 'it')}
+          className="bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
+        >
+          <span>{lang === 'it' ? '🇮🇹 IT' : '🇬🇧 EN'}</span>
+        </button>
+      </div>
+
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">

@@ -162,8 +162,13 @@ router.get('/asset', async (req, res) => {
     setProxyHeaders(res, contentType);
     res.send(response.data);
   } catch (error) {
-    console.error('Asset Proxy Error for:', url, error.message);
-    res.status(500).send('Error loading asset');
+    console.error(`[CORS-Proxy] Error fetching ${url}:`, error.message);
+    if (error.response) {
+      console.error('[CORS-Proxy] Upstream Response Status:', error.response.status);
+      console.error('[CORS-Proxy] Upstream Response Data:', JSON.stringify(error.response.data).slice(0, 500));
+      return res.status(error.response.status).send(error.response.data);
+    }
+    res.status(500).json({ error: 'Proxy request failed: ' + error.message });
   }
 });
 
@@ -203,6 +208,8 @@ router.all('/cors-proxy', async (req, res) => {
   } catch (error) {
     console.error(`CORS Proxy Error [${req.method} ${url}]:`, error.message);
     if (error.response) {
+      console.error('[CORS-Proxy] Upstream Response Status:', error.response.status);
+      console.error('[CORS-Proxy] Upstream Response Data:', JSON.stringify(error.response.data).slice(0, 500));
       res.status(error.response.status);
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
@@ -210,7 +217,7 @@ router.all('/cors-proxy', async (req, res) => {
       if (error.response.data) res.send(error.response.data);
       else res.end();
     } else {
-      res.status(500).send('Proxy Error');
+      res.status(500).send('Proxy Error: ' + error.message);
     }
   }
 });
@@ -1014,21 +1021,21 @@ router.get('/secure-frame', async (req, res) => {
     // Decrypt Notion URL
     const notionUrl = decrypt(payload.encryptedUrl);
 
-    // Fetch and serve Notion HTML directly
-    // NOTE: Worker errors will appear in console but page should still function
-    const response = await axios.get(notionUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'text/html',
-        'Accept-Language': 'en-US,en;q=0.9'
-      },
-      maxRedirects: 5
-    });
+    // Use the comprehensive proxy function to fetch and rewrite content
+    const { fetchAndRewriteNotionPage } = require('../utils/proxy');
 
-    // Send HTML as-is (no modifications needed)
+    // Pass the decrypted URL to our proxy utility
+    const html = await fetchAndRewriteNotionPage(notionUrl);
+
+    // Serve the modified HTML
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.send(response.data);
+
+    // Add COOP/COEP headers to allow SharedArrayBuffer usage
+    res.set('Cross-Origin-Opener-Policy', 'same-origin');
+    res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+
+    res.send(html);
 
   } catch (error) {
     console.error('[Secure-Frame] Error:', error.message);

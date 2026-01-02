@@ -107,8 +107,10 @@ app.get(['/_next/*', '/front-static/*', '/image/*'], async (req, res) => {
     if (contentType) res.set('Content-Type', contentType);
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cross-Origin-Opener-Policy', 'same-origin');
+    res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.removeHeader('Access-Control-Allow-Credentials');
-    res.removeHeader('Cross-Origin-Resource-Policy');
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
   };

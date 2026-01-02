@@ -143,6 +143,7 @@ router.get('/asset', async (req, res) => {
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.set('Cross-Origin-Opener-Policy', 'same-origin');
     res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Service-Worker-Allowed', '/');
     res.removeHeader('Access-Control-Allow-Credentials');
     res.removeHeader('X-Frame-Options');
@@ -202,6 +203,7 @@ router.all('/cors-proxy', async (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-notion-active-user-header, notion-client-version');
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     const contentType = response.headers['content-type'];
     if (contentType) res.setHeader('Content-Type', contentType);
     if (response.status >= 400) { res.status(response.status).send(response.data); } else { res.send(response.data); }
@@ -297,7 +299,9 @@ router.get('/js-proxy', async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Cross-Origin-Opener-Policy', 'same-origin');
     res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
     res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+
     res.set('Access-Control-Allow-Headers', '*');
     res.set('Access-Control-Expose-Headers', '*');
     res.set('Timing-Allow-Origin', '*');

@@ -1,66 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
-
-const translations = {
-  it: {
-    pageNotFound: 'Pagina non trovata',
-    pageLoadError: 'Errore nel caricamento della pagina',
-    pageNotFoundDesc: 'La pagina che stai cercando non esiste o è stata rimossa.',
-    backHome: 'Torna alla Home',
-    heroTitle: 'NotionLock',
-    heroSubtitle: 'Proteggi le tue pagine Notion gratuitamente',
-    protectedContent: 'Contenuto Protetto',
-    enterPassword: 'Inserisci la password per accedere',
-    placeholder: 'Inserisci la password',
-    wrongPassword: 'Password non corretta',
-    tooManyAttempts: 'Troppi tentativi. Riprova tra qualche minuto.',
-    genericError: 'Si è verificato un errore',
-    verifying: 'Verifica in corso...',
-    access: 'Accedi',
-    protectedBy: 'Protetto da',
-    footerText: 'Servizio 100% gratuito per proteggere le tue pagine Notion'
-  },
-  en: {
-    pageNotFound: 'Page not found',
-    pageLoadError: 'Error loading page',
-    pageNotFoundDesc: 'The page you are looking for does not exist or has been removed.',
-    backHome: 'Back to Home',
-    heroTitle: 'NotionLock',
-    heroSubtitle: 'Protect your Notion pages for free',
-    protectedContent: 'Protected Content',
-    enterPassword: 'Enter password to access',
-    placeholder: 'Enter password',
-    wrongPassword: 'Incorrect password',
-    tooManyAttempts: 'Too many attempts. Please try again later.',
-    genericError: 'An error occurred',
-    verifying: 'Verifying...',
-    access: 'Access',
-    protectedBy: 'Protected by',
-    footerText: '100% free service to protect your Notion pages'
-  }
-};
 
 const PasswordEntry = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [pageInfo, setPageInfo] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [lang, setLang] = useState('en');
 
-  useEffect(() => {
-    // Detect language
-    const userLang = navigator.language || navigator.userLanguage;
-    if (userLang.toLowerCase().startsWith('it')) {
-      setLang('it');
-    }
-  }, []);
-
-  const t = translations[lang];
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'it' ? 'en' : 'it';
+    i18n.changeLanguage(newLang);
+  };
 
   useEffect(() => {
     const fetchPageInfo = async () => {
@@ -69,10 +26,6 @@ const PasswordEntry = () => {
         setPageInfo(data);
       } catch (err) {
         if (err.response?.status === 404) {
-          setError(translations.it.pageNotFound); // Fallback or use current lang? Using lang might be tricky inside async before render, but state is updated.
-          // However, for error state string comparison later, usually checking status code is safer.
-          // For display, we use the error state.
-          // Let's rely on API status for logic and t for display.
           setError('404');
         } else {
           setError('500');
@@ -114,11 +67,11 @@ const PasswordEntry = () => {
 
   const getErrorMessage = (code) => {
     switch (code) {
-      case '404': return t.pageNotFound;
-      case '401': return t.wrongPassword;
-      case '429': return t.tooManyAttempts;
-      case '500': return t.genericError;
-      default: return code || t.genericError;
+      case '404': return t('password_entry.page_not_found');
+      case '401': return t('password_entry.wrong_password');
+      case '429': return t('password_entry.too_many_attempts');
+      case '500': return t('password_entry.generic_error');
+      default: return code || t('password_entry.generic_error');
     }
   };
 
@@ -138,13 +91,13 @@ const PasswordEntry = () => {
             <svg className="w-20 h-20 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.pageNotFound}</h1>
-            <p className="text-gray-600 mb-6">{t.pageNotFoundDesc}</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('password_entry.page_not_found')}</h1>
+            <p className="text-gray-600 mb-6">{t('password_entry.page_not_found_desc')}</p>
             <Link
               to="/"
               className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
             >
-              {t.backHome}
+              {t('password_entry.back_home')}
             </Link>
           </div>
         </div>
@@ -157,10 +110,10 @@ const PasswordEntry = () => {
       {/* Language Toggle */}
       <div className="absolute top-4 right-4 z-10">
         <button
-          onClick={() => setLang(lang === 'it' ? 'en' : 'it')}
+          onClick={toggleLanguage}
           className="bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
         >
-          <span>{lang === 'it' ? '🇮🇹 IT' : '🇬🇧 EN'}</span>
+          <span>{i18n.language === 'it' ? '🇮🇹 IT' : '🇬🇧 EN'}</span>
         </button>
       </div>
 
@@ -169,9 +122,8 @@ const PasswordEntry = () => {
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center justify-center space-x-3">
               <img src="/NotionLock_Logo.png" alt="NotionLock Logo" className="h-12 w-auto" />
-              <h1 className="text-3xl font-bold text-blue-600">{t.heroTitle}</h1>
+              <h1 className="text-3xl font-bold text-blue-600">{t('password_entry.hero_subtitle')}</h1>
             </Link>
-            <p className="text-gray-600 mt-2">{t.heroSubtitle}</p>
           </div>
           {/* Password Form */}
           <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
@@ -181,8 +133,8 @@ const PasswordEntry = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t.protectedContent}</h1>
-              <p className="text-gray-600">{pageInfo?.title || t.enterPassword}</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('password_entry.protected_content')}</h1>
+              <p className="text-gray-600">{pageInfo?.title || t('password_entry.enter_password_title')}</p>
             </div>
 
             {error && (
@@ -197,7 +149,7 @@ const PasswordEntry = () => {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t.placeholder}
+                  placeholder={t('password_entry.placeholder')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
                   required
                   autoFocus
@@ -226,23 +178,21 @@ const PasswordEntry = () => {
                 disabled={submitting}
                 className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? t.verifying : t.access}
+                {submitting ? t('password_entry.verifying') : t('password_entry.access')}
               </button>
             </form>
           </div>
 
-
-
           {/* Footer */}
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              {t.protectedBy}{' '}
+              {t('password_entry.protected_by')}{' '}
               <Link to="/" className="text-blue-600 hover:underline font-medium">
                 NotionLock
               </Link>
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              {t.footerText}
+              {t('password_entry.footer_text')}
             </p>
           </div>
         </div>

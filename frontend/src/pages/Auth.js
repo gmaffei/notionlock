@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
 const Auth = () => {
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialMode = searchParams.get('mode');
@@ -18,6 +20,11 @@ const Auth = () => {
 
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'it' ? 'en' : 'it';
+    i18n.changeLanguage(newLang);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,44 +42,54 @@ const Auth = () => {
         navigate('/dashboard');
       } else {
         // Registrazione: mostra messaggio di conferma senza fare login automatico
-        setRegistrationSuccess(data.message || 'Registrazione completata! Controlla la tua email per verificare l\'account.');
+        setRegistrationSuccess(data.message || t('auth.success_register'));
         setEmail('');
         setPassword('');
         // Non fare login automatico per forzare l'utente a verificare l'email
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Si è verificato un errore');
+      setError(err.response?.data?.error || t('password_entry.generic_error'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 relative">
+      {/* Language Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={toggleLanguage}
+          className="bg-white px-3 py-1 rounded-full shadow-sm border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition flex items-center gap-1"
+        >
+          <span>{i18n.language === 'it' ? '🇮🇹 IT' : '🇬🇧 EN'}</span>
+        </button>
+      </div>
+
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center space-x-3">
             <img src="/NotionLock_Logo.png" alt="NotionLock Logo" className="h-12 w-auto" />
             <h1 className="text-3xl font-bold text-blue-600">NotionLock</h1>
           </Link>
-          <p className="text-gray-600 mt-2">Proteggi le tue pagine Notion gratuitamente e facilmente - v2.7</p>
+          <p className="text-gray-600 mt-2">{t('auth.hero_subtitle')}</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h2 className="text-2xl font-bold text-center mb-6">
-            {isLogin ? 'Accedi al tuo account' : 'Inizia a proteggere le tue pagine'}
+            {isLogin ? t('auth.login_title') : t('auth.register_title')}
           </h2>
 
           {!isLogin && (
             <div className="mb-6 space-y-2">
               <div className="flex items-center text-sm text-gray-600">
-                <span className="text-green-500 mr-2">✓</span> Nessuna carta di credito richiesta
+                <span className="text-green-500 mr-2">✓</span> {t('auth.no_credit_card')}
               </div>
               <div className="flex items-center text-sm text-gray-600">
-                <span className="text-green-500 mr-2">✓</span> Piano Free per sempre
+                <span className="text-green-500 mr-2">✓</span> {t('auth.free_forever')}
               </div>
               <div className="flex items-center text-sm text-gray-600">
-                <span className="text-green-500 mr-2">✓</span> Setup in meno di 30 secondi
+                <span className="text-green-500 mr-2">✓</span> {t('auth.quick_setup')}
               </div>
             </div>
           )}
@@ -99,7 +116,7 @@ const Auth = () => {
                 }}
                 className="text-blue-600 hover:text-blue-800 font-medium text-sm underline"
               >
-                Vai al login per accedere
+                {t('auth.go_to_login')}
               </button>
             </div>
           )}
@@ -107,7 +124,7 @@ const Auth = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+                {t('auth.email_label')}
               </label>
               <input
                 id="email"
@@ -116,7 +133,7 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="nome@esempio.com"
+                placeholder={t('auth.email_placeholder')}
                 autoComplete="email"
                 autoCorrect="off"
                 spellCheck="false"
@@ -126,7 +143,7 @@ const Auth = () => {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+                {t('auth.password_label')}
               </label>
               <div className="relative">
                 <input
@@ -136,7 +153,7 @@ const Auth = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="••••••••"
+                  placeholder={t('auth.password_placeholder')}
                   autoComplete={isLogin ? "current-password" : "new-password"}
                   autoCorrect="off"
                   spellCheck="false"
@@ -161,7 +178,7 @@ const Auth = () => {
                 </button>
               </div>
               {!isLogin && (
-                <p className="text-xs text-gray-500 mt-1">Minimo 6 caratteri</p>
+                <p className="text-xs text-gray-500 mt-1">{t('auth.min_chars')}</p>
               )}
             </div>
 
@@ -170,7 +187,7 @@ const Auth = () => {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Attendere...' : (isLogin ? 'Accedi' : 'Crea Account Gratuito')}
+              {loading ? t('auth.submit_loading') : (isLogin ? t('auth.submit_login') : t('auth.submit_register'))}
             </button>
           </form>
 
@@ -180,11 +197,11 @@ const Auth = () => {
                 to="/forgot-password"
                 className="block text-blue-600 hover:underline text-sm"
               >
-                Password dimenticata?
+                {t('auth.forgot_pass')}
               </Link>
             )}
             <p className="text-gray-600">
-              {isLogin ? 'Non hai un account?' : 'Hai già un account?'}{' '}
+              {isLogin ? t('auth.no_account') : t('auth.have_account')}{' '}
               <button
                 onClick={() => {
                   setIsLogin(!isLogin);
@@ -193,16 +210,16 @@ const Auth = () => {
                 }}
                 className="text-blue-600 hover:underline font-medium"
               >
-                {isLogin ? 'Inizia Gratis' : 'Accedi'}
+                {isLogin ? t('auth.start_free') : t('auth.login_title')}
               </button>
             </p>
           </div>
         </div>
 
         <p className="text-center mt-6 text-sm text-gray-500">
-          Continuando, accetti i nostri{' '}
+          {t('auth.terms_agree')}{' '}
           <Link to="/privacy" className="text-blue-600 hover:underline">
-            termini di servizio
+            {t('auth.terms_link')}
           </Link>
         </p>
       </div>

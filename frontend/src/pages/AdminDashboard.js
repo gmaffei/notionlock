@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
+import { useAuth } from '../contexts/AuthContext';
+
 const AdminDashboard = () => {
+    const { login } = useAuth(); // Import login from context
     const [stats, setStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [settings, setSettings] = useState(null);
@@ -120,8 +123,8 @@ const AdminDashboard = () => {
 
             const data = await res.json();
 
-            // Overwrite token and redirect
-            localStorage.setItem('token', data.token);
+            // Use login from context to update state and localStorage correctly
+            login(data.token);
             window.location.href = '/dashboard';
 
         } catch (err) {
